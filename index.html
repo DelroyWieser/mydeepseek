@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek · 极速版</title>
+    <title>DeepSeek · 移动优化版</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -17,6 +18,8 @@
             color: #e4e4e7;
             height: 100vh;
             overflow: hidden;
+            position: fixed;
+            width: 100%;
         }
 
         .app {
@@ -69,7 +72,7 @@
             background: #2c2c2e;
             border: none;
             color: white;
-            padding: 10px 12px;
+            padding: 12px;
             border-radius: 12px;
             font-size: 15px;
             font-weight: 500;
@@ -81,7 +84,7 @@
             transition: background 0.2s;
         }
 
-        .new-chat-btn:hover {
+        .new-chat-btn:active {
             background: #3a3a3c;
         }
 
@@ -125,13 +128,8 @@
             color: #8e8e93;
             cursor: pointer;
             font-size: 18px;
-            padding: 0 4px;
-            opacity: 0;
-            transition: opacity 0.1s;
-        }
-
-        .history-item:hover .delete-history {
-            opacity: 1;
+            padding: 4px 8px;
+            min-width: 32px;
         }
 
         .main {
@@ -158,13 +156,17 @@
             border: none;
             color: white;
             font-size: 24px;
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+        }
+
+        .menu-btn:active {
+            background: #2c2c2e;
         }
 
         .logo-area {
@@ -173,7 +175,7 @@
             flex: 1;
             cursor: pointer;
             user-select: none;
-            transition: opacity 0.2s;
+            padding: 8px 0;
         }
         .logo-area:active { opacity: 0.7; }
 
@@ -185,6 +187,7 @@
             flex-direction: column;
             gap: 24px;
             scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
 
         .message {
@@ -231,24 +234,26 @@
             background: #2b4f7c;
         }
 
-        /* 复制按钮 */
+        /* 复制按钮 - 移动端加大点击区域 */
         .copy-btn {
             position: absolute;
-            bottom: -28px;
+            bottom: -32px;
             right: 8px;
             background: #2c2c2e;
             border: none;
             color: #aaa;
-            font-size: 11px;
-            padding: 4px 10px;
+            font-size: 12px;
+            padding: 6px 12px;
             border-radius: 20px;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.2s;
             z-index: 5;
             font-weight: 500;
+            min-width: 60px;
         }
-        .message:hover .copy-btn {
+        .message:hover .copy-btn,
+        .message:active .copy-btn {
             opacity: 1;
         }
         .copy-btn.copied {
@@ -257,7 +262,7 @@
             opacity: 1;
         }
 
-        /* 文件卡片 - 优雅不显示内容 */
+        /* 文件卡片 */
         .file-card {
             display: inline-flex;
             align-items: center;
@@ -288,7 +293,7 @@
             color: white;
         }
 
-        /* 输入区 */
+        /* 输入区 - 移动端优化 */
         .input-area {
             background: #0f0f0f;
             border-top: 1px solid #2c2c2e;
@@ -302,18 +307,20 @@
             align-items: flex-end;
             background: #1c1c1e;
             border-radius: 28px;
-            padding: 8px 12px;
+            padding: 6px 12px;
         }
 
         .file-label {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 26px;
             cursor: pointer;
-            padding: 6px;
+            padding: 8px 4px;
             line-height: 1;
             color: #8e8e93;
             transition: color 0.2s;
+            display: flex;
+            align-items: center;
         }
         .file-label:active { color: #3a6ea5; }
 
@@ -327,7 +334,7 @@
             border: none;
             color: white;
             font-size: 16px;
-            padding: 8px 4px;
+            padding: 10px 4px;
             max-height: 120px;
             resize: none;
             font-family: inherit;
@@ -342,17 +349,21 @@
             background: #2b4f7c;
             border: none;
             color: white;
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             border-radius: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 20px;
             transition: opacity 0.1s;
+            flex-shrink: 0;
         }
-
+        .send-btn:active {
+            opacity: 0.7;
+            transform: scale(0.96);
+        }
         .send-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -361,7 +372,7 @@
         .file-preview-card {
             background: #1c1c1e;
             border-radius: 20px;
-            padding: 6px 12px;
+            padding: 8px 12px;
             margin-top: 8px;
             display: flex;
             align-items: center;
@@ -373,35 +384,15 @@
             border: none;
             color: #ff453a;
             cursor: pointer;
-            font-size: 18px;
-            padding: 0 4px;
+            font-size: 20px;
+            padding: 4px 8px;
         }
 
         .input-hint {
             font-size: 11px;
             color: #5c5c5e;
-            margin-top: 6px;
+            margin-top: 8px;
             margin-left: 12px;
-        }
-
-        /* 打字指示器 */
-        .typing-indicator {
-            display: flex;
-            gap: 4px;
-            padding: 8px 0;
-        }
-        .typing-indicator span {
-            width: 6px;
-            height: 6px;
-            background: #8e8e93;
-            border-radius: 50%;
-            animation: pulse 1.2s infinite ease-in-out;
-        }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes pulse {
-            0%, 60%, 100% { transform: scale(0.8); opacity: 0.4; }
-            30% { transform: scale(1.2); opacity: 1; }
         }
 
         @media (min-width: 768px) {
@@ -459,7 +450,7 @@
 
         <div class="input-area">
             <div class="input-wrapper">
-                <label class="file-label" title="上传文件 (txt, md, json, csv, 代码等)">📎
+                <label class="file-label" title="上传文件">📎
                     <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml,.log">
                 </label>
                 <textarea class="message-input" id="messageInput" placeholder="输入消息... (Shift+Enter 发送)" rows="1"></textarea>
@@ -593,7 +584,6 @@
         if (window.innerWidth < 768) closeSidebar();
     }
 
-    // 将文本中的换行符转换为 <br> 保留分段
     function formatTextWithBreaks(text) {
         if (!text) return '';
         return escapeHtml(text).replace(/\n/g, '<br>');
@@ -619,10 +609,8 @@
                 let displayContent = msg.content;
                 let fileCardHtml = '';
                 
-                // 用户消息中的文件：只显示卡片，不显示内容
                 if (msg.role === 'user' && msg.fileMeta) {
                     fileCardHtml = `<div class="file-card"><span class="file-icon">📄</span><span class="file-name">${escapeHtml(msg.fileMeta.name)}</span><span class="file-badge">已上传</span></div>`;
-                    // 如果有普通文本，显示文本（但隐藏文件内容部分）
                     let cleanText = msg.textOnly || '';
                     if (cleanText && cleanText.length > 0) {
                         displayContent = cleanText;
@@ -647,9 +635,13 @@
             }
         }
         
-        // 绑定复制事件
         document.querySelectorAll('.copy-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rawText = btn.getAttribute('data-text') || '';
+                copyToClipboard(rawText, btn);
+            });
+            btn.addEventListener('touchstart', (e) => {
                 e.stopPropagation();
                 const rawText = btn.getAttribute('data-text') || '';
                 copyToClipboard(rawText, btn);
@@ -682,9 +674,8 @@
         let messageObj = { role, content, timestamp: Date.now() };
         if (fileMeta && role === 'user') {
             messageObj.fileMeta = fileMeta;
-            // 提取纯文本部分（去掉文件内容块）
             let cleanText = content;
-            // 移除 [文件: xxx] 和文件内容块
+            cleanText = cleanText.replace(/【用户上传的文件：.*?】\n文件内容：[\s\S]*?【文件结束】\n/g, '').trim();
             cleanText = cleanText.replace(/\[文件:.*?\]\n内容:[\s\S]*/g, '').trim();
             if (!cleanText && fileMeta) cleanText = '';
             messageObj.textOnly = cleanText;
@@ -701,7 +692,7 @@
         renderCurrentChat();
     }
 
-    // ==================== API 调用（流式，优化响应） ====================
+    // ==================== API 调用 ====================
     async function sendMessageWithFile() {
         if (isGenerating) {
             alert('正在回复中，请稍后');
@@ -716,7 +707,6 @@
         
         if (pendingFile) {
             attachedFileMeta = { name: pendingFile.name };
-            // 文件内容只发送给 API，不在 UI 显示
             fileContentForAI = `\n\n【用户上传的文件：${pendingFile.name}】\n文件内容：\n${pendingFile.content.slice(0, 5000)}${pendingFile.content.length > 5000 ? '\n...(内容已截断)' : ''}\n【文件结束】\n`;
             if (finalUserContent) {
                 finalUserContent = finalUserContent + fileContentForAI;
@@ -729,12 +719,10 @@
         
         if (!finalUserContent) return;
         
-        // 添加用户消息（只显示文件卡片，不显示文件内容）
         addMessageToCurrent('user', finalUserContent, attachedFileMeta, true);
         messageInput.value = '';
         autoResizeTextarea();
         
-        // 添加 AI 占位
         const conv = conversations.find(c => c.id === currentConversationId);
         const assistantMsgIndex = conv.messages.length;
         conv.messages.push({ role: 'assistant', content: '' });
@@ -744,7 +732,6 @@
         isGenerating = true;
         sendBtn.disabled = true;
         
-        // 构建 API 消息
         const historyMessages = conv.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
         const apiMessages = [
             { role: 'system', content: '你是一个智能助手。回复时请使用换行符和段落分隔，使内容清晰易读。根据用户上传的文件内容回答问题。' },
@@ -795,7 +782,6 @@
                                 const currentConv = conversations.find(c => c.id === currentConversationId);
                                 if (currentConv && currentConv.messages[assistantMsgIndex]) {
                                     currentConv.messages[assistantMsgIndex].content = fullContent;
-                                    // 实时更新显示（带换行格式）
                                     const bubbles = document.querySelectorAll('.message.assistant .bubble');
                                     if (bubbles[assistantMsgIndex]) {
                                         const bubbleDiv = bubbles[assistantMsgIndex];
@@ -804,6 +790,10 @@
                                         const newBtn = bubbleDiv.querySelector('.copy-btn');
                                         if (newBtn) {
                                             newBtn.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                copyToClipboard(fullContent, newBtn);
+                                            });
+                                            newBtn.addEventListener('touchstart', (e) => {
                                                 e.stopPropagation();
                                                 copyToClipboard(fullContent, newBtn);
                                             });
@@ -867,7 +857,6 @@
     }
     
     // ==================== 滚动控制 ====================
-    let lastScrollTop = 0;
     function scrollToBottom() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -876,7 +865,6 @@
         messagesContainer.scrollTop = 0;
     }
     
-    // 双击标题回到顶部，单击滚动到底部
     let clickTimer = null;
     scrollToTopBtn.addEventListener('click', (e) => {
         if (clickTimer) {
@@ -896,4 +884,7 @@
         messageInput.style.height = Math.min(100, messageInput.scrollHeight) + 'px';
     }
     
-    function escape
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') r
