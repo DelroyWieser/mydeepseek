@@ -19,14 +19,13 @@
             overflow: hidden;
         }
 
-        /* 主布局 - 移动端优先，侧边栏滑出式 */
         .app {
             display: flex;
             height: 100%;
             position: relative;
         }
 
-        /* 侧边栏 (历史记录) */
+        /* 侧边栏 */
         .sidebar {
             position: fixed;
             top: 0;
@@ -47,7 +46,6 @@
             transform: translateX(0);
         }
 
-        /* 遮罩层 */
         .overlay {
             position: fixed;
             inset: 0;
@@ -61,7 +59,6 @@
             display: block;
         }
 
-        /* 侧边栏头部 */
         .sidebar-header {
             padding: 20px 16px;
             border-bottom: 1px solid #2c2c2e;
@@ -82,10 +79,6 @@
             gap: 8px;
             cursor: pointer;
             transition: background 0.2s;
-        }
-
-        .new-chat-btn:hover {
-            background: #3a3a3c;
         }
 
         .history-list {
@@ -147,7 +140,6 @@
             background: #0f0f0f;
         }
 
-        /* 顶部栏 */
         .top-bar {
             padding: 12px 16px;
             background: #0f0f0f;
@@ -179,7 +171,6 @@
             user-select: none;
         }
 
-        /* 消息容器 */
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -231,7 +222,6 @@
             background: #2b4f7c;
         }
 
-        /* 复制按钮样式 */
         .copy-btn {
             background: rgba(255,255,255,0.1);
             border: none;
@@ -243,23 +233,20 @@
             cursor: pointer;
             transition: 0.1s;
         }
-        .copy-btn:hover {
-            background: rgba(255,255,255,0.2);
-            color: white;
-        }
+
         .message-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
         }
+
         .role-name {
             font-size: 12px;
             font-weight: 500;
             color: #8e8e93;
         }
 
-        /* 文件卡片样式 (不显示原文内容) */
         .file-card {
             display: inline-flex;
             align-items: center;
@@ -270,26 +257,6 @@
             font-size: 13px;
             margin: 4px 0;
             max-width: 100%;
-        }
-        .file-icon {
-            font-size: 18px;
-        }
-        .file-name {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
-        }
-
-        /* 打字机效果 */
-        .typing-cursor::after {
-            content: '▊';
-            animation: blink 1s step-end infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
         }
 
         /* 底部输入区域 */
@@ -387,11 +354,26 @@
                 display: none;
             }
         }
+
+        /* 移动端优化 */
+        @media (max-width: 767px) {
+            .bubble {
+                max-width: 90%;
+            }
+            .send-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+            .file-label {
+                font-size: 28px;
+                padding: 4px;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="app">
-    <!-- 侧边栏 -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <button class="new-chat-btn" id="newChatBtn">+ 新建对话</button>
@@ -403,7 +385,6 @@
     </div>
     <div class="overlay" id="overlay"></div>
 
-    <!-- 主聊天区 -->
     <div class="main">
         <div class="top-bar">
             <button class="menu-btn" id="menuToggle">☰</button>
@@ -413,16 +394,16 @@
         <div class="messages-container" id="messagesContainer">
             <div class="message assistant">
                 <div class="avatar">🤖</div>
-                <div class="bubble">你好！我是 DeepSeek，支持上传文件（txt, md, json, csv, 代码等）。点击标题可回到顶部，每条消息右上角可一键复制。</div>
+                <div class="bubble">你好！我是 DeepSeek，支持上传文件。点击标题回到顶部，每条消息可复制。手机端点击蓝色按钮发送消息～</div>
             </div>
         </div>
 
         <div class="input-area">
             <div class="input-wrapper">
-                <label class="file-label" title="上传文件 (文本/代码)">📎
+                <label class="file-label" title="上传文件">📎
                     <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml">
                 </label>
-                <textarea class="message-input" id="messageInput" placeholder="发送消息... (Shift+Enter 换行, Enter 发送)" rows="1"></textarea>
+                <textarea class="message-input" id="messageInput" placeholder="输入消息..." rows="1"></textarea>
                 <button class="send-btn" id="sendBtn">➤</button>
             </div>
             <div id="filePreviewArea" class="file-preview"></div>
@@ -431,112 +412,92 @@
 </div>
 
 <script>
-    // ---------- 配置 ----------
+    // ========== API Key 配置 ==========
     let API_KEY = localStorage.getItem('deepseek_api_key') || '';
     if (!API_KEY) {
-        const userKey = prompt('🔐 请输入你的 DeepSeek API Key（可从 platform.deepseek.com 获取）:\n\n不会上传，仅本地存储用于调用。');
+        const userKey = prompt('🔐 请输入你的 DeepSeek API Key：\n(可从 platform.deepseek.com 获取)');
         if (userKey && userKey.trim()) {
             API_KEY = userKey.trim();
             localStorage.setItem('deepseek_api_key', API_KEY);
-        } else {
-            alert('未输入 API Key，对话将无法发送！请刷新后重新输入');
         }
     }
 
     const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
     const MODEL = 'deepseek-chat';
 
-    // ---------- 数据结构 ----------
+    // 数据结构
     let conversations = [];
     let currentConversationId = null;
-
     let isGenerating = false;
-    let pendingFile = null;   // 暂存待上传文件信息 { name, content }
+    let pendingFile = null;
 
-    // DOM
-    const sidebarEl = document.getElementById('sidebar');
+    // DOM 元素
+    const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
     const menuToggle = document.getElementById('menuToggle');
     const newChatBtn = document.getElementById('newChatBtn');
-    const historyListEl = document.getElementById('historyList');
+    const historyList = document.getElementById('historyList');
     const messagesContainer = document.getElementById('messagesContainer');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const fileInput = document.getElementById('fileInput');
-    const filePreviewArea = document.getElementById('filePreviewArea');
+    const filePreview = document.getElementById('filePreviewArea');
     const scrollToTopBtn = document.getElementById('scrollToTopBtn');
 
-    // ---------- 辅助函数 ----------
+    // ========== 存储操作 ==========
     function saveConversations() {
         localStorage.setItem('deepseek_conversations', JSON.stringify(conversations));
     }
 
-    function loadConversationsFromStorage() {
+    function loadConversations() {
         const raw = localStorage.getItem('deepseek_conversations');
         if (raw) {
             try {
                 conversations = JSON.parse(raw);
                 if (!Array.isArray(conversations)) conversations = [];
-                for (let c of conversations) {
-                    if (!c.messages) c.messages = [];
-                    if (!c.createdAt) c.createdAt = Date.now();
-                }
             } catch(e) { conversations = []; }
         }
         if (conversations.length === 0) {
             const newId = Date.now().toString();
-            conversations.push({
-                id: newId,
-                title: '新对话',
-                messages: [],
-                createdAt: Date.now()
-            });
-            currentConversationId = newId;
-            saveConversations();
-        } else {
-            if (!currentConversationId) {
-                currentConversationId = conversations[0].id;
-            } else {
-                const exists = conversations.find(c => c.id === currentConversationId);
-                if (!exists) currentConversationId = conversations[0].id;
-            }
+            conversations = [{ id: newId, title: '新对话', messages: [] }];
+        }
+        if (!currentConversationId || !conversations.find(c => c.id === currentConversationId)) {
+            currentConversationId = conversations[0].id;
         }
     }
 
+    // 渲染侧边栏
     function renderHistory() {
-        if (!historyListEl) return;
-        historyListEl.innerHTML = '';
-        for (let conv of conversations) {
+        historyList.innerHTML = '';
+        conversations.forEach(conv => {
             const div = document.createElement('div');
             div.className = 'history-item';
-            if (currentConversationId === conv.id) div.classList.add('active');
-            const titleSpan = document.createElement('span');
-            titleSpan.className = 'history-title';
-            titleSpan.innerText = conv.title || (conv.messages.length > 0 ? conv.messages[0].content.slice(0, 28) : '新对话');
-            const delBtn = document.createElement('button');
-            delBtn.innerText = '🗑';
-            delBtn.className = 'delete-history';
+            if (conv.id === currentConversationId) div.classList.add('active');
+            const title = conv.title || (conv.messages[0]?.content?.slice(0, 25) || '新对话');
+            div.innerHTML = `
+                <span class="history-title">${escapeHtml(title)}</span>
+                <button class="delete-history" data-id="${conv.id}">🗑</button>
+            `;
+            div.onclick = (e) => {
+                if (e.target.classList.contains('delete-history')) return;
+                switchConversation(conv.id);
+            };
+            const delBtn = div.querySelector('.delete-history');
             delBtn.onclick = (e) => {
                 e.stopPropagation();
                 deleteConversation(conv.id);
             };
-            div.appendChild(titleSpan);
-            div.appendChild(delBtn);
-            div.onclick = () => switchConversation(conv.id);
-            historyListEl.appendChild(div);
-        }
+            historyList.appendChild(div);
+        });
     }
 
     function deleteConversation(id) {
         if (conversations.length === 1) {
-            alert('至少保留一个对话，请新建对话后再删除');
+            alert('至少保留一个对话');
             return;
         }
-        const idx = conversations.findIndex(c => c.id === id);
-        if (idx !== -1) conversations.splice(idx, 1);
-        if (currentConversationId === id) {
-            currentConversationId = conversations[0].id;
-        }
+        conversations = conversations.filter(c => c.id !== id);
+        if (currentConversationId === id) currentConversationId = conversations[0].id;
         saveConversations();
         renderHistory();
         renderCurrentChat();
@@ -544,211 +505,152 @@
 
     function switchConversation(id) {
         if (isGenerating) {
-            alert('请等待当前回复完成后再切换对话');
+            alert('请等待回复完成');
             return;
         }
         currentConversationId = id;
         renderHistory();
         renderCurrentChat();
-        if (window.innerWidth < 768) {
-            closeSidebar();
-        }
+        if (window.innerWidth < 768) closeSidebar();
     }
 
-    // 渲染带复制按钮和分段的消息
+    // 渲染聊天内容
     function renderCurrentChat() {
         const conv = conversations.find(c => c.id === currentConversationId);
         if (!conv) return;
         messagesContainer.innerHTML = '';
+        
         if (conv.messages.length === 0) {
-            const welcomeDiv = document.createElement('div');
-            welcomeDiv.className = 'message assistant';
-            welcomeDiv.innerHTML = `<div class="avatar">🤖</div><div class="bubble">有什么可以帮你的？上传文件或直接提问～</div>`;
-            messagesContainer.appendChild(welcomeDiv);
+            messagesContainer.innerHTML = '<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">有什么可以帮你的？上传文件或直接提问～</div></div>';
         } else {
-            for (let i = 0; i < conv.messages.length; i++) {
-                const msg = conv.messages[i];
+            conv.messages.forEach(msg => {
                 const msgDiv = document.createElement('div');
                 msgDiv.className = `message ${msg.role}`;
                 
-                // 构建气泡内部结构：头部（角色名+复制按钮）+ 内容
-                const roleName = msg.role === 'user' ? '你' : 'DeepSeek';
-                const copyableText = msg.content;
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
                 
-                const bubbleContent = document.createElement('div');
-                bubbleContent.className = 'bubble';
-                
-                const headerDiv = document.createElement('div');
-                headerDiv.className = 'message-header';
+                const header = document.createElement('div');
+                header.className = 'message-header';
                 const roleSpan = document.createElement('span');
                 roleSpan.className = 'role-name';
-                roleSpan.innerText = roleName;
-                const copyButton = document.createElement('button');
-                copyButton.innerText = '复制';
-                copyButton.className = 'copy-btn';
-                copyButton.onclick = (e) => {
-                    e.stopPropagation();
-                    copyToClipboard(copyableText);
-                };
-                headerDiv.appendChild(roleSpan);
-                headerDiv.appendChild(copyButton);
+                roleSpan.innerText = msg.role === 'user' ? '你' : 'DeepSeek';
+                const copyBtn = document.createElement('button');
+                copyBtn.innerText = '复制';
+                copyBtn.className = 'copy-btn';
+                copyBtn.onclick = () => copyToClipboard(msg.content);
+                header.appendChild(roleSpan);
+                header.appendChild(copyBtn);
                 
                 const contentDiv = document.createElement('div');
-                // 处理文本中的换行和空格
                 contentDiv.style.whiteSpace = 'pre-wrap';
                 contentDiv.style.wordBreak = 'break-word';
                 contentDiv.innerText = msg.content;
                 
-                bubbleContent.appendChild(headerDiv);
-                bubbleContent.appendChild(contentDiv);
+                bubble.appendChild(header);
+                bubble.appendChild(contentDiv);
                 
                 const avatar = document.createElement('div');
                 avatar.className = 'avatar';
                 avatar.innerText = msg.role === 'user' ? '👤' : '🤖';
                 
                 msgDiv.appendChild(avatar);
-                msgDiv.appendChild(bubbleContent);
+                msgDiv.appendChild(bubble);
                 messagesContainer.appendChild(msgDiv);
-            }
+            });
         }
         scrollToBottom();
     }
 
-    // 复制功能
     async function copyToClipboard(text) {
         try {
             await navigator.clipboard.writeText(text);
-            // 简单提示
-            const btn = event?.target;
-            if (btn) {
-                const original = btn.innerText;
-                btn.innerText = '✓ 已复制';
-                setTimeout(() => { btn.innerText = original; }, 1500);
-            } else {
-                alert('已复制到剪贴板');
-            }
-        } catch (err) {
-            alert('复制失败，可手动复制');
+            alert('已复制到剪贴板');
+        } catch(err) {
+            alert('复制失败');
         }
     }
 
-    // 添加消息 (支持附件以卡片展示，不爆出内容)
-    function addMessageToCurrent(role, content, saveImmediately = true, fileInfo = null) {
+    function addMessage(role, content, save = true) {
         const conv = conversations.find(c => c.id === currentConversationId);
         if (!conv) return;
-        
-        let finalContent = content;
-        // 如果是用户消息并且携带文件卡片，则额外存储文件元数据，渲染时以卡片形式展示。
-        if (role === 'user' && fileInfo) {
-            // 在内容中附加一个不可见标记，同时存储到扩展字段便于渲染卡片，但为了简单，直接改变 content 格式为卡片+文本
-            // 更好的方式: 使用富文本标记, 但为了不暴露原文，我们存储一个自定义结构
-            // 但为了向后兼容, 我们存储一个特殊标记，渲染时单独处理。简便起见，在消息体里只保留用户文本，文件信息单独存于messages的extra
-            if (!conv.messages._extra) conv.messages._extra = {};
-            // 实际使用中, 我们可以在消息对象上挂载 fileAttachments
-        }
-        
-        // 干净存储：如果文件存在，把文件信息存在 message 的 fileMeta 字段（不暴露原文内容）
-        const messageObj = { role, content: finalContent, timestamp: Date.now() };
-        if (role === 'user' && fileInfo) {
-            messageObj.fileMeta = { name: fileInfo.name, size: fileInfo.size };  // 不存原文内容
-        }
-        conv.messages.push(messageObj);
-        
-        if (saveImmediately) saveConversations();
-        // 更新会话标题
+        conv.messages.push({ role, content });
+        if (save) saveConversations();
         if (role === 'user' && conv.messages.filter(m => m.role === 'user').length === 1) {
-            let newTitle = content.slice(0, 30);
-            if (newTitle.length < 1) newTitle = '新对话';
-            conv.title = newTitle;
-            saveConversations();
+            conv.title = content.slice(0, 25);
             renderHistory();
         }
         renderCurrentChat();
     }
 
-    // 专门显示文件卡片的消息（追加一条只显示文件卡片的消息，不显示原文）
-    function appendFileCardMessage(fileName) {
-        const conv = conversations.find(c => c.id === currentConversationId);
-        if (!conv) return;
-        // 添加一条特殊样式的消息，表示上传了文件，不显示内容
-        const cardHtml = `<div class="file-card"><span class="file-icon">📄</span><span class="file-name">${escapeHtml(fileName)}</span></div>`;
-        const messageObj = { role: 'user', content: `[上传文件: ${fileName}]`, isFileCard: true, fileName: fileName };
-        conv.messages.push(messageObj);
-        saveConversations();
-        renderCurrentChat();
-    }
-
-    // 流式输出
-    async function sendMessageWithFile() {
+    // 发送消息（核心功能）
+    async function sendMessage() {
+        // 调试：确保函数被调用
+        console.log('sendMessage 被调用');
+        
         if (isGenerating) {
-            alert('正在回复中，请稍后');
-            return;
-        }
-        let userText = messageInput.value.trim();
-        if (!userText && !pendingFile) {
+            alert('请等待回复完成');
             return;
         }
         
-        let attachedFileInfo = null;
-        let fileContentForContext = '';
+        let userText = messageInput.value.trim();
+        if (!userText && !pendingFile) return;
+        
+        // 处理文件
+        let fileContentForAI = '';
+        let fileName = null;
         if (pendingFile) {
-            attachedFileInfo = { name: pendingFile.name, content: pendingFile.content, size: pendingFile.size };
-            fileContentForContext = `\n\n[用户上传了文件: ${pendingFile.name}]\n文件内容摘要:\n${pendingFile.content.slice(0, 2500)}${pendingFile.content.length > 2500 ? '\n...(内容过长已截断)' : ''}`;
-            // 显示文件卡片而不是原内容
-            appendFileCardMessage(pendingFile.name);
-            // 清空待上传文件
+            fileName = pendingFile.name;
+            fileContentForAI = `\n\n[用户上传了文件: ${fileName}]\n文件内容:\n${pendingFile.content.slice(0, 3000)}`;
+            // 显示文件卡片
+            const conv = conversations.find(c => c.id === currentConversationId);
+            if (conv) {
+                conv.messages.push({ role: 'user', content: `📎 上传了文件: ${fileName}`, isFileCard: true });
+                saveConversations();
+                renderCurrentChat();
+            }
             pendingFile = null;
             clearFilePreview();
         }
         
-        // 最终发送给AI的文本（包含文件内容，但不展示在聊天界面原文中，符合deepseek风格）
-        let finalUserContent = userText;
-        if (attachedFileInfo) {
-            finalUserContent = userText ? userText + fileContentForContext : `请根据以下文件内容回答问题：${fileContentForContext}`;
+        // 组合发送给AI的内容
+        let finalContent = userText;
+        if (fileName) {
+            finalContent = userText ? userText + fileContentForAI : `请分析这个文件：${fileName}${fileContentForAI}`;
         }
-        if (!finalUserContent && !userText && attachedFileInfo) finalUserContent = `请分析上传的文件：${attachedFileInfo.name}`;
-        if (!finalUserContent) return;
+        if (!finalContent) return;
         
-        // 添加用户消息（文本部分，无文件原文展示）
-        addMessageToCurrent('user', userText || `查看了文件: ${attachedFileInfo?.name || ''}`, true, attachedFileInfo ? { name: attachedFileInfo.name, size: attachedFileInfo.size } : null);
+        // 添加用户消息
+        addMessage('user', userText || `[文件: ${fileName}]`);
         messageInput.value = '';
         autoResizeTextarea();
         
-        // 添加临时AI占位
+        // 添加AI占位
         const conv = conversations.find(c => c.id === currentConversationId);
-        const assistantMsgIndex = conv.messages.length;
+        const msgIndex = conv.messages.length;
         conv.messages.push({ role: 'assistant', content: '' });
         saveConversations();
         renderCurrentChat();
         
-        const assistantBubbles = document.querySelectorAll('.message.assistant .bubble');
-        const lastBubble = assistantBubbles[assistantBubbles.length - 1];
+        // 获取最后一条气泡用于光标效果
+        const bubbles = document.querySelectorAll('.message.assistant .bubble');
+        const lastBubble = bubbles[bubbles.length - 1];
         if (lastBubble) lastBubble.classList.add('typing-cursor');
         
         isGenerating = true;
         sendBtn.disabled = true;
         
-        // 构建请求消息历史 (去掉文件卡片消息的内容标记，只保留有意义文本)
-        const historyMessages = [];
-        for (let m of conv.messages.slice(0, -1)) {
-            if (m.role === 'user') {
-                // 如果是文件卡片占位，跳过或者用摘要代替
-                if (m.isFileCard) {
-                    historyMessages.push({ role: 'user', content: `[用户上传了文件: ${m.fileName}]` });
-                } else {
-                    historyMessages.push({ role: 'user', content: m.content });
-                }
-            } else {
-                historyMessages.push({ role: m.role, content: m.content });
-            }
-        }
-        // 将当前的真实带文件内容的查询追加
-        historyMessages.push({ role: 'user', content: finalUserContent });
-        
+        // 构建API消息历史
         const apiMessages = [
-            { role: 'system', content: '你是DeepSeek助手，根据提供的文件内容和对话历史给出准确、格式清晰的回答，注意换行和分段，提升可读性。' },
-            ...historyMessages
+            { role: 'system', content: '你是DeepSeek助手，回答要清晰分段，使用换行和标点提升可读性。' }
         ];
+        // 添加历史消息（跳过文件卡片）
+        for (let m of conv.messages.slice(0, -1)) {
+            if (m.isFileCard) continue;
+            apiMessages.push({ role: m.role, content: m.content });
+        }
+        // 添加当前真实消息（带文件内容）
+        apiMessages.push({ role: 'user', content: finalContent });
         
         try {
             const response = await fetch(DEEPSEEK_URL, {
@@ -766,8 +668,7 @@
             });
             
             if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`API错误 ${response.status}: ${errText}`);
+                throw new Error(`API错误: ${response.status}`);
             }
             
             const reader = response.body.getReader();
@@ -782,25 +683,22 @@
                 const lines = buffer.split('\n');
                 buffer = lines.pop();
                 for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || trimmed === 'data: [DONE]') continue;
-                    if (trimmed.startsWith('data: ')) {
-                        const jsonStr = trimmed.slice(6);
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
                         try {
-                            const parsed = JSON.parse(jsonStr);
-                            const delta = parsed.choices[0]?.delta?.content || '';
+                            const json = JSON.parse(data);
+                            const delta = json.choices[0]?.delta?.content || '';
                             if (delta) {
                                 fullContent += delta;
                                 const currentConv = conversations.find(c => c.id === currentConversationId);
-                                if (currentConv && currentConv.messages[assistantMsgIndex]) {
-                                    currentConv.messages[assistantMsgIndex].content = fullContent;
-                                    // 实时更新渲染，保留复制按钮
-                                    const allBubbles = document.querySelectorAll('.message.assistant .bubble');
-                                    if (allBubbles[assistantMsgIndex]) {
-                                        const contentDiv = allBubbles[assistantMsgIndex].querySelector('div:last-child');
+                                if (currentConv && currentConv.messages[msgIndex]) {
+                                    currentConv.messages[msgIndex].content = fullContent;
+                                    // 实时更新UI
+                                    const currentBubbles = document.querySelectorAll('.message.assistant .bubble');
+                                    if (currentBubbles[msgIndex]) {
+                                        const contentDiv = currentBubbles[msgIndex].querySelector('div:last-child');
                                         if (contentDiv) contentDiv.innerText = fullContent;
-                                        if (lastBubble) lastBubble.classList.remove('typing-cursor');
-                                        if (lastBubble) lastBubble.classList.add('typing-cursor');
                                     }
                                 }
                                 scrollToBottom();
@@ -810,22 +708,15 @@
                 }
             }
             if (lastBubble) lastBubble.classList.remove('typing-cursor');
-            const finalConv = conversations.find(c => c.id === currentConversationId);
-            if (finalConv && finalConv.messages[assistantMsgIndex]) {
-                finalConv.messages[assistantMsgIndex].content = fullContent || '(空回复)';
-            }
             saveConversations();
             renderCurrentChat();
-        } catch (err) {
+        } catch(err) {
             console.error(err);
-            const errorMsg = `请求失败: ${err.message}`;
             const convErr = conversations.find(c => c.id === currentConversationId);
-            if (convErr && convErr.messages[assistantMsgIndex]) {
-                convErr.messages[assistantMsgIndex].content = errorMsg;
+            if (convErr && convErr.messages[msgIndex]) {
+                convErr.messages[msgIndex].content = `错误: ${err.message}`;
                 saveConversations();
                 renderCurrentChat();
-            } else {
-                addMessageToCurrent('assistant', errorMsg, true);
             }
         } finally {
             isGenerating = false;
@@ -834,34 +725,22 @@
         }
     }
     
-    // 文件处理 (只存储内容用于AI上下文，不在界面爆出)
-    function handleFileUpload(file) {
-        if (!file) return;
+    // 文件处理
+    function handleFile(file) {
         const reader = new FileReader();
         reader.onload = (e) => {
             let content = e.target.result;
-            if (content.length > 8000) {
-                content = content.slice(0, 8000) + '\n... (文件过大，已截断至前8000字符用于分析)';
-            }
-            pendingFile = {
-                name: file.name,
-                content: content,
-                size: file.size
-            };
-            showFilePreview(file.name);
+            if (content.length > 5000) content = content.slice(0, 5000) + '\n...(已截断)';
+            pendingFile = { name: file.name, content: content };
+            filePreview.innerHTML = `<span>📄 ${escapeHtml(file.name)}</span><button class="remove-file" id="removeFileBtn">✖</button>`;
+            const removeBtn = document.getElementById('removeFileBtn');
+            if (removeBtn) removeBtn.onclick = () => { pendingFile = null; filePreview.innerHTML = ''; fileInput.value = ''; };
         };
-        reader.onerror = () => alert('文件读取失败');
         reader.readAsText(file, 'UTF-8');
     }
     
-    function showFilePreview(name) {
-        filePreviewArea.innerHTML = `<span>📄 已选择: ${escapeHtml(name)}</span><button class="remove-file" id="removeFileBtn">✖</button>`;
-        const removeBtn = document.getElementById('removeFileBtn');
-        if (removeBtn) removeBtn.onclick = () => { pendingFile = null; clearFilePreview(); };
-    }
-    
     function clearFilePreview() {
-        filePreviewArea.innerHTML = '';
+        filePreview.innerHTML = '';
         pendingFile = null;
         fileInput.value = '';
     }
@@ -879,26 +758,72 @@
         messageInput.style.height = Math.min(100, messageInput.scrollHeight) + 'px';
     }
     
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-    
     function newConversation() {
         if (isGenerating) {
             alert('请等待回复完成');
             return;
         }
         const newId = Date.now().toString();
-        conversations.unshift({
-            id: newId,
-            title: '新对话',
-            messages: [],
-            createdAt: Date.now()
-        });
-        currentCo
+        conversations.unshift({ id: newId, title: '新对话', messages: [] });
+        currentConversationId = newId;
+        saveConversations();
+        renderHistory();
+        renderCurrentChat();
+        if (window.innerWidth < 768) closeSidebar();
+    }
+    
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+    }
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
+    }
+    
+    // ========== 事件绑定 ==========
+    menuToggle.addEventListener('click', () => {
+        if (sidebar.classList.contains('open')) closeSidebar();
+        else openSidebar();
+    });
+    overlay.addEventListener('click', closeSidebar);
+    newChatBtn.addEventListener('click', newConversation);
+    
+    // 修复：发送按钮点击事件（关键修复）
+    sendBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('发送按钮被点击');
+        sendMessage();
+    });
+    
+    // 键盘事件：Enter发送，Shift+Enter换行
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    messageInput.addEventListener('input', autoResizeTextarea);
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+    });
+    scrollToTopBtn.addEventListener('click', scrollToTop);
+    
+    // 初始化
+    loadConversations();
+    renderHistory();
+    renderCurrentChat();
+    autoResizeTextarea();
+    
+    if (!API_KEY) {
+        setTimeout(() => alert('⚠️ 未设置 API Key，请刷新页面重新输入'), 100);
+    }
+</script>
+</body>
+</html>
