@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-    <title>DeepSeek 智能助手 · 流畅滑动版</title>
+    <title>DeepSeek 智能助手 · 极速滑动版</title>
     <style>
         * {
             margin: 0;
@@ -73,7 +73,6 @@
             justify-content: center;
             gap: 8px;
             cursor: pointer;
-            transition: 0.2s;
         }
 
         .history-list {
@@ -165,9 +164,6 @@
             border-radius: 30px;
             font-size: 18px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .messages-container {
@@ -222,17 +218,6 @@
             background: #2b4f7c;
         }
 
-        .file-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #2c2c2e;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            margin: 4px 0;
-        }
-
         .copy-btn {
             background: #2c2c2e;
             border: none;
@@ -241,12 +226,7 @@
             padding: 4px 8px;
             border-radius: 16px;
             cursor: pointer;
-            margin-left: 8px;
-            transition: 0.1s;
-        }
-
-        .message:hover .copy-btn {
-            display: inline-block;
+            margin-top: 6px;
         }
 
         .bubble-actions {
@@ -311,9 +291,6 @@
             border-radius: 30px;
             font-size: 18px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .send-btn:disabled {
@@ -385,7 +362,7 @@
     <div class="messages-container" id="messagesContainer">
         <div class="message assistant">
             <div class="avatar">🤖</div>
-            <div class="bubble">你好！我是 DeepSeek。支持上传文件。<br>✨ 生成回复时你可以自由滑动页面，不会卡顿。<br>📌 点击 ↑ 回到顶部，点击复制按钮可复制内容。</div>
+            <div class="bubble">你好！我是 DeepSeek，支持上传文件。<br>✨ 生成回复时你可以自由滑动，完全不影响！<br>📌 点击 ↑ 回到顶部，点击复制按钮可复制内容。</div>
         </div>
     </div>
 
@@ -422,8 +399,10 @@
     let currentConversationId = null;
     let isGenerating = false;
     let pendingFile = null;
-    let updateTimer = null;      // 防抖更新计时器
-    let pendingContent = '';     // 待更新的内容缓存
+    let pendingUpdate = null;      // requestAnimationFrame 句柄
+    let pendingBubbleContent = ''; // 待更新的内容
+    let currentBubbleElement = null; // 当前正在更新的气泡DOM
+    let currentAssistantIndex = -1;   // 当前消息索引
 
     // DOM
     const sidebarEl = document.getElementById('sidebar');
@@ -443,7 +422,7 @@
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
             return m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;';
-        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) { return c; });
+        });
     }
 
     function formatWithBreaks(text) {
@@ -520,21 +499,19 @@
         if (window.innerWidth < 768) closeSidebar();
     }
 
-    // 更新指定气泡的内容（防抖优化，不干扰滚动）
-    function updateBubbleContent(assistantMsgIndex, content) {
-        pendingContent = content;
-        if (updateTimer) clearTimeout(updateTimer);
-        updateTimer = setTimeout(() => {
-            const conv = conversations.find(c => c.id === currentConversationId);
-            if (conv && conv.messages[assistantMsgIndex]) {
-                conv.messages[assistantMsgIndex].content = pendingContent;
-                const bubbles = document.querySelectorAll('.message.assistant .bubble');
-                if (bubbles[assistantMsgIndex]) {
-                    const bubbleDiv = bubbles[assistantMsgIndex];
-                    const formattedHtml = formatWithBreaks(pendingContent);
-                    let actionDiv = bubbleDiv.querySelector('.bubble-actions');
-                    bubbleDiv.innerHTML = formattedHtml;
-                    if (actionDiv) bubbleDiv.appendChild(actionDiv);
+    // 使用 requestAnimationFrame 更新气泡（高频但不会阻塞滚动）
+    function scheduleBubbleUpdate(content) {
+        pendingBubbleContent = content;
+        if (pendingUpdate) return;
+        pendingUpdate = requestAnimationFrame(() => {
+            if (currentBubbleElement && currentAssistantIndex >= 0) {
+                const conv = conversations.find(c => c.id === currentConversationId);
+                if (conv && conv.messages[currentAssistantIndex]) {
+                    conv.messages[currentAssistantIndex].content = pendingBubbleContent;
+                    const formattedHtml = formatWithBreaks(pendingBubbleContent);
+                    let actionDiv = currentBubbleElement.querySelector('.bubble-actions');
+                    currentBubbleElement.innerHTML = formattedHtml;
+                    if (actionDiv) currentBubbleElement.appendChild(actionDiv);
                     else {
                         const newAction = document.createElement('div');
                         newAction.className = 'bubble-actions';
@@ -543,19 +520,18 @@
                         copyBtn.className = 'copy-btn';
                         copyBtn.onclick = (e) => {
                             e.stopPropagation();
-                            copyToClipboard(pendingContent);
+                            copyToClipboard(pendingBubbleContent);
                         };
                         newAction.appendChild(copyBtn);
-                        bubbleDiv.appendChild(newAction);
+                        currentBubbleElement.appendChild(newAction);
                     }
-                    // 保持光标效果
-                    if (!bubbleDiv.classList.contains('typing-cursor')) {
-                        bubbleDiv.classList.add('typing-cursor');
+                    if (!currentBubbleElement.classList.contains('typing-cursor')) {
+                        currentBubbleElement.classList.add('typing-cursor');
                     }
                 }
             }
-            updateTimer = null;
-        }, 80); // 80ms防抖，流畅且不卡滚动
+            pendingUpdate = null;
+        });
     }
 
     async function copyToClipboard(text) {
@@ -670,14 +646,16 @@
         reader.readAsText(file, 'UTF-8');
     }
 
-    // 核心发送函数：流式 + 防抖更新，不干扰滚动
+    // 核心发送函数：极速流式 + requestAnimationFrame 更新，不阻塞滚动
     async function sendMessageWithFile() {
         if (isGenerating) { alert('请等待回复完成'); return; }
         let userText = messageInput.value.trim();
         if (!userText && !pendingFile) return;
 
         let finalUserContent = userText;
+        let attachedFileInfo = null;
         if (pendingFile) {
+            attachedFileInfo = { name: pendingFile.name, content: pendingFile.content };
             finalUserContent = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
             pendingFile = null;
             clearFilePreview();
@@ -693,20 +671,24 @@
         conv.messages.push({ role: 'assistant', content: '' });
         saveConversations();
         renderCurrentChat();
-        scrollToBottom();  // 只在发送时滚动一次
+        scrollToBottom();
 
-        const targetBubble = document.querySelectorAll('.message.assistant .bubble')[assistantMsgIndex];
-        if (targetBubble) targetBubble.classList.add('typing-cursor');
+        // 获取刚创建的气泡元素
+        const bubbles = document.querySelectorAll('.message.assistant .bubble');
+        currentBubbleElement = bubbles[assistantMsgIndex];
+        currentAssistantIndex = assistantMsgIndex;
+        if (currentBubbleElement) currentBubbleElement.classList.add('typing-cursor');
 
         isGenerating = true;
         sendBtn.disabled = true;
 
+        // 构建 API 消息
         const historyMessages = conv.messages.slice(0, -1);
         let apiMessages = [{ role: 'system', content: '你是一个智能助手。回复请使用清晰分段、适当换行，使阅读舒适。' }];
         for (let m of historyMessages) {
             let content = m.content;
-            if (m.role === 'user' && m.content.includes('[文件:')) {
-                // 文件内容已在pendingFile中传递，这里简单标记
+            if (m.role === 'user' && attachedFileInfo && m.content.includes(`[文件: ${attachedFileInfo.name}]`)) {
+                content = userText + `\n\n[文件上传: ${attachedFileInfo.name}]\n文件内容:\n${attachedFileInfo.content.slice(0, 4000)}`;
             }
             apiMessages.push({ role: m.role, content: content });
         }
@@ -739,13 +721,14 @@
                             const delta = parsed.choices[0]?.delta?.content || '';
                             if (delta) {
                                 fullContent += delta;
-                                updateBubbleContent(assistantMsgIndex, fullContent);
+                                // 使用 RAF 更新，完全不阻塞滚动
+                                scheduleBubbleUpdate(fullContent);
                             }
                         } catch(e) {}
                     }
                 }
             }
-            if (targetBubble) targetBubble.classList.remove('typing-cursor');
+            if (currentBubbleElement) currentBubbleElement.classList.remove('typing-cursor');
             const finalConv = conversations.find(c => c.id === currentConversationId);
             if (finalConv && finalConv.messages[assistantMsgIndex]) {
                 finalConv.messages[assistantMsgIndex].content = fullContent || '(空回复)';
@@ -763,7 +746,12 @@
         } finally {
             isGenerating = false;
             sendBtn.disabled = false;
-            if (updateTimer) clearTimeout(updateTimer);
+            if (pendingUpdate) {
+                cancelAnimationFrame(pendingUpdate);
+                pendingUpdate = null;
+            }
+            currentBubbleElement = null;
+            currentAssistantIndex = -1;
         }
     }
 
