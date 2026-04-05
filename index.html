@@ -2,19 +2,150 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>DeepSeek 聊天</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>DeepSeek 高效聊天 · 个人版</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             background: #0f0f0f;
             color: #e4e4e7;
             height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 主布局 - 移动端优先，侧边栏滑出式 */
+        .app {
+            display: flex;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 侧边栏 (历史记录) */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100%;
+            background: #1a1a1a;
+            border-right: 1px solid #2c2c2e;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+            z-index: 30;
             display: flex;
             flex-direction: column;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.4);
         }
-        /* 顶部栏 */
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(2px);
+            z-index: 20;
+            display: none;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid #2c2c2e;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            background: #2c2c2e;
+            border: none;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: #3a3a3c;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .history-item {
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1f1f1f;
+            border: 1px solid #2c2c2e;
+        }
+
+        .history-item.active {
+            background: #2d2d30;
+            border-color: #4a4a4e;
+        }
+
+        .history-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .delete-history {
+            background: none;
+            border: none;
+            color: #8e8e93;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0 4px;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        .history-item:hover .delete-history {
+            opacity: 1;
+        }
+
+        /* 主聊天区域 */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            background: #0f0f0f;
+        }
+
+        /* 顶部栏 - 支持点击回顶 */
         .top-bar {
             padding: 12px 16px;
             background: #0f0f0f;
@@ -22,7 +153,9 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex-shrink: 0;
         }
+
         .menu-btn {
             background: #1c1c1e;
             border: none;
@@ -31,24 +164,44 @@
             width: 36px;
             height: 36px;
             border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
         }
-        .logo-area { font-weight: 600; font-size: 18px; flex: 1; }
-        /* 消息区域 */
+
+        .logo-area {
+            font-weight: 600;
+            font-size: 18px;
+            flex: 1;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+        .logo-area:active { opacity: 0.7; }
+
+        /* 消息容器 */
         .messages-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px 16px;
+            padding: 20px 16px 80px 16px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 24px;
+            scroll-behavior: smooth;
         }
+
         .message {
             display: flex;
             gap: 12px;
             max-width: 100%;
+            position: relative;
         }
-        .message.user { justify-content: flex-end; }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
         .avatar {
             width: 32px;
             height: 32px;
@@ -60,39 +213,110 @@
             font-size: 14px;
             flex-shrink: 0;
         }
-        .message.user .avatar { background: #3a6ea5; order: 2; }
+
+        .message.user .avatar {
+            background: #3a6ea5;
+            order: 2;
+        }
+
         .bubble {
             background: #1e1e20;
-            padding: 10px 14px;
-            border-radius: 18px;
-            line-height: 1.4;
+            padding: 12px 16px;
+            border-radius: 20px;
+            line-height: 1.5;
             font-size: 15px;
-            max-width: 80%;
+            max-width: 85%;
             word-wrap: break-word;
+            position: relative;
         }
-        .message.user .bubble { background: #2b4f7c; }
-        /* 底部输入区 */
+
+        .message.user .bubble {
+            background: #2b4f7c;
+        }
+
+        /* 复制按钮 */
+        .copy-btn {
+            position: absolute;
+            bottom: -24px;
+            right: 8px;
+            background: #2c2c2e;
+            border: none;
+            color: #aaa;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 5;
+            font-weight: 500;
+        }
+        .message:hover .copy-btn {
+            opacity: 1;
+        }
+        .copy-btn.copied {
+            background: #3a6ea5;
+            color: white;
+            opacity: 1;
+        }
+
+        /* 文件附件展示 (优雅小卡片) */
+        .file-attachment {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #2c2c2e;
+            padding: 4px 10px 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 6px;
+            margin-bottom: 4px;
+            width: fit-content;
+            color: #b0b0b8;
+        }
+        .file-icon {
+            font-size: 14px;
+        }
+        .file-name {
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 输入区 */
         .input-area {
             background: #0f0f0f;
             border-top: 1px solid #2c2c2e;
-            padding: 12px 16px 20px;
+            padding: 12px 16px 20px 16px;
+            flex-shrink: 0;
         }
+
         .input-wrapper {
             display: flex;
             gap: 10px;
-            align-items: center;
+            align-items: flex-end;
             background: #1c1c1e;
             border-radius: 28px;
-            padding: 6px 12px;
+            padding: 8px 12px;
         }
+
         .file-label {
-            font-size: 24px;
-            cursor: pointer;
             background: none;
             border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 6px;
+            line-height: 1;
             color: #8e8e93;
+            transition: color 0.2s;
         }
-        #fileInput { display: none; }
+        .file-label:active { color: #3a6ea5; }
+
+        #fileInput {
+            display: none;
+        }
+
         .message-input {
             flex: 1;
             background: transparent;
@@ -100,9 +324,15 @@
             color: white;
             font-size: 16px;
             padding: 8px 4px;
+            max-height: 120px;
+            resize: none;
             font-family: inherit;
         }
-        .message-input:focus { outline: none; }
+
+        .message-input:focus {
+            outline: none;
+        }
+
         .send-btn {
             background: #2b4f7c;
             border: none;
@@ -110,323 +340,571 @@
             width: 36px;
             height: 36px;
             border-radius: 30px;
-            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
+            font-size: 18px;
+            transition: opacity 0.1s;
         }
-        .file-preview {
-            font-size: 12px;
-            color: #8e8e93;
-            padding: 6px 12px 0;
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 文件预览小条 */
+        .file-preview-card {
+            background: #1c1c1e;
+            border-radius: 20px;
+            padding: 6px 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
         }
         .remove-file {
             background: none;
             border: none;
             color: #ff453a;
-            margin-left: 8px;
             cursor: pointer;
+            font-size: 18px;
+            padding: 0 4px;
         }
-        /* 侧边栏 */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 260px;
-            height: 100%;
-            background: #1a1a1a;
-            transform: translateX(-100%);
-            transition: transform 0.2s;
-            z-index: 30;
-            display: flex;
-            flex-direction: column;
-        }
-        .sidebar.open { transform: translateX(0); }
-        .overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 20;
-            display: none;
-        }
-        .overlay.show { display: block; }
-        .sidebar-header { padding: 20px 16px; border-bottom: 1px solid #2c2c2e; }
-        .new-chat-btn {
-            width: 100%;
-            background: #2c2c2e;
-            border: none;
-            color: white;
-            padding: 10px;
-            border-radius: 12px;
-            cursor: pointer;
-        }
-        .history-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-        .history-item {
-            padding: 10px;
-            border-radius: 10px;
-            background: #1f1f1f;
-            margin-bottom: 6px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-        }
-        .delete-history { background: none; border: none; color: #8e8e93; cursor: pointer; }
+
         @media (min-width: 768px) {
-            .sidebar { transform: translateX(0); position: relative; }
-            .overlay { display: none !important; }
-            .menu-btn { display: none; }
-            body { flex-direction: row; }
+            .sidebar {
+                position: relative;
+                transform: translateX(0);
+                width: 280px;
+                display: flex;
+            }
+            .overlay {
+                display: none !important;
+            }
+            .menu-btn {
+                display: none;
+            }
+        }
+
+        /* 滚动条美化 */
+        .messages-container::-webkit-scrollbar, .history-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .messages-container::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #4a4a4e;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-<div style="display: flex; width: 100%; height: 100%;">
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-header"><button class="new-chat-btn" id="newChatBtn">+ 新建对话</button></div>
-    <div class="history-list" id="historyList"></div>
-</div>
-<div class="overlay" id="overlay"></div>
-<div style="flex:1; display: flex; flex-direction: column; height: 100%;">
-    <div class="top-bar">
-        <button class="menu-btn" id="menuToggle">☰</button>
-        <div class="logo-area">DeepSeek · 个人助理</div>
-    </div>
-    <div class="messages-container" id="messagesContainer">
-        <div class="message assistant"><div class="avatar">🤖</div><div class="bubble">你好！我是 DeepSeek，支持上传文件（txt、md、json等）。</div></div>
-    </div>
-    <div class="input-area">
-        <div class="input-wrapper">
-            <label class="file-label" title="上传文件">📎<input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py"></label>
-            <textarea class="message-input" id="messageInput" placeholder="输入消息..." rows="1"></textarea>
-            <button class="send-btn" id="sendBtn">➤</button>
+<div class="app">
+    <!-- 侧边栏 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" id="newChatBtn">+ 新建对话</button>
         </div>
-        <div id="filePreviewArea" class="file-preview"></div>
+        <div class="history-list" id="historyList"></div>
+        <div style="padding: 16px; font-size: 11px; color: #5c5c5e; border-top: 1px solid #2c2c2e; text-align: center;">
+            API Key 仅存本地
+        </div>
     </div>
-</div>
+    <div class="overlay" id="overlay"></div>
+
+    <!-- 主聊天区 -->
+    <div class="main">
+        <div class="top-bar">
+            <button class="menu-btn" id="menuToggle">☰</button>
+            <div class="logo-area" id="scrollToTopBtn">DeepSeek · 个人助理</div>
+        </div>
+
+        <div class="messages-container" id="messagesContainer">
+            <div class="message assistant">
+                <div class="avatar">🤖</div>
+                <div class="bubble">你好！我是 DeepSeek，支持上传文件（文本/代码），不会在对话中爆出文件内容，以附件形式展示。点击顶部标题可回到最新消息～</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <label class="file-label" title="上传文件 (txt, md, json, csv, 代码等)">📎
+                    <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml,.log">
+                </label>
+                <textarea class="message-input" id="messageInput" placeholder="发送消息..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">➤</button>
+            </div>
+            <div id="filePreviewArea" class="file-preview-card" style="display: none;"></div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // ========== 获取 API Key（首次访问时弹窗输入）==========
-    let API_KEY = localStorage.getItem('deepseek_api_key');
+    // ---------- 配置 ----------
+    let API_KEY = localStorage.getItem('deepseek_api_key') || '';
     if (!API_KEY) {
-        let key = prompt('🔑 请输入你的 DeepSeek API Key：\n(可从 platform.deepseek.com 获取)');
-        if (key && key.trim()) {
-            API_KEY = key.trim();
+        const userKey = prompt('🔐 请输入你的 DeepSeek API Key（可从 platform.deepseek.com 获取）:\n\n仅存储于本地浏览器，安全调用。');
+        if (userKey && userKey.trim()) {
+            API_KEY = userKey.trim();
             localStorage.setItem('deepseek_api_key', API_KEY);
         } else {
-            API_KEY = '';
-            alert('未输入 API Key，将无法发送消息');
+            alert('未输入 API Key，对话将无法发送！刷新后可重新输入');
         }
     }
 
     const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
-    
-    // 数据结构
+    const MODEL = 'deepseek-chat';
+
+    // ---------- 数据结构 ----------
     let conversations = [];
-    let currentId = null;
+    let currentConversationId = null;
     let isGenerating = false;
-    let pendingFile = null;
+    let pendingFile = null;     // { name, content }
 
     // DOM
-    const msgContainer = document.getElementById('messagesContainer');
-    const msgInput = document.getElementById('messageInput');
+    const sidebarEl = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const menuToggle = document.getElementById('menuToggle');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const historyListEl = document.getElementById('historyList');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const fileInput = document.getElementById('fileInput');
-    const filePreview = document.getElementById('filePreviewArea');
-    const historyList = document.getElementById('historyList');
-    const newChatBtn = document.getElementById('newChatBtn');
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
+    const filePreviewArea = document.getElementById('filePreviewArea');
+    const scrollToTopBtn = document.getElementById('scrollToTopBtn');
 
-    // 辅助函数
-    function save() { localStorage.setItem('deepseek_chats', JSON.stringify(conversations)); }
-    
-    function load() {
-        let raw = localStorage.getItem('deepseek_chats');
-        if (raw) {
-            try { conversations = JSON.parse(raw); } catch(e) { conversations = []; }
-        }
-        if (!conversations.length) {
-            conversations = [{ id: Date.now().toString(), title: '新对话', messages: [] }];
-        }
-        if (!currentId || !conversations.find(c => c.id === currentId)) {
-            currentId = conversations[0].id;
-        }
-        renderHistory();
-        renderChat();
+    // ---------- 辅助函数 ----------
+    function saveConversations() {
+        localStorage.setItem('deepseek_conversations', JSON.stringify(conversations));
     }
 
+    function loadConversationsFromStorage() {
+        const raw = localStorage.getItem('deepseek_conversations');
+        if (raw) {
+            try {
+                conversations = JSON.parse(raw);
+                if (!Array.isArray(conversations)) conversations = [];
+                for (let c of conversations) {
+                    if (!c.messages) c.messages = [];
+                    if (!c.createdAt) c.createdAt = Date.now();
+                }
+            } catch(e) { conversations = []; }
+        }
+        if (conversations.length === 0) {
+            const newId = Date.now().toString();
+            conversations.push({
+                id: newId,
+                title: '新对话',
+                messages: [],
+                createdAt: Date.now()
+            });
+            currentConversationId = newId;
+            saveConversations();
+        } else {
+            if (!currentConversationId) {
+                currentConversationId = conversations[0].id;
+            } else {
+                const exists = conversations.find(c => c.id === currentConversationId);
+                if (!exists) currentConversationId = conversations[0].id;
+            }
+        }
+    }
+
+    // 渲染侧边栏
     function renderHistory() {
-        historyList.innerHTML = '';
-        conversations.forEach(conv => {
-            let div = document.createElement('div');
+        if (!historyListEl) return;
+        historyListEl.innerHTML = '';
+        for (let conv of conversations) {
+            const div = document.createElement('div');
             div.className = 'history-item';
-            if (conv.id === currentId) div.style.background = '#2d2d30';
-            let title = conv.title || (conv.messages[0]?.content?.slice(0,20) || '新对话');
-            div.innerHTML = `<span>${escapeHtml(title)}</span><button class="delete-history" data-id="${conv.id}">🗑</button>`;
-            div.onclick = (e) => { if(e.target.tagName!='BUTTON') switchChat(conv.id); };
-            div.querySelector('.delete-history').onclick = (e) => { e.stopPropagation(); deleteChat(conv.id); };
-            historyList.appendChild(div);
+            if (currentConversationId === conv.id) div.classList.add('active');
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'history-title';
+            titleSpan.innerText = conv.title || (conv.messages.length > 0 ? conv.messages[0].content.slice(0, 28) : '新对话');
+            const delBtn = document.createElement('button');
+            delBtn.innerText = '🗑';
+            delBtn.className = 'delete-history';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteConversation(conv.id);
+            };
+            div.appendChild(titleSpan);
+            div.appendChild(delBtn);
+            div.onclick = () => switchConversation(conv.id);
+            historyListEl.appendChild(div);
+        }
+    }
+
+    function deleteConversation(id) {
+        if (conversations.length === 1) {
+            alert('至少保留一个对话，请新建对话后再删除');
+            return;
+        }
+        const idx = conversations.findIndex(c => c.id === id);
+        if (idx !== -1) conversations.splice(idx, 1);
+        if (currentConversationId === id) {
+            currentConversationId = conversations[0].id;
+        }
+        saveConversations();
+        renderHistory();
+        renderCurrentChat();
+    }
+
+    function switchConversation(id) {
+        if (isGenerating) {
+            alert('请等待当前回复完成后再切换对话');
+            return;
+        }
+        currentConversationId = id;
+        renderHistory();
+        renderCurrentChat();
+        if (window.innerWidth < 768) closeSidebar();
+    }
+
+    // 渲染当前对话 (附带复制按钮 & 文件卡片样式)
+    function renderCurrentChat() {
+        const conv = conversations.find(c => c.id === currentConversationId);
+        if (!conv) return;
+        messagesContainer.innerHTML = '';
+        if (conv.messages.length === 0) {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'message assistant';
+            welcomeDiv.innerHTML = `<div class="avatar">🤖</div><div class="bubble">有什么可以帮你的？上传文件或直接提问～<br>📎 文件会以附件卡片展示，不会显示冗长内容。</div>`;
+            messagesContainer.appendChild(welcomeDiv);
+        } else {
+            for (let i = 0; i < conv.messages.length; i++) {
+                const msg = conv.messages[i];
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${msg.role}`;
+                let avatar = msg.role === 'user' ? '👤' : '🤖';
+                let bubbleContent = '';
+
+                // 处理消息内容：如果用户消息包含文件元数据，转换为附件展示（隐藏原始长内容）
+                let displayContent = msg.content;
+                let fileAttachmentHtml = '';
+                if (msg.role === 'user' && msg.fileMeta) {
+                    // 有文件附加，以卡片显示，不爆出文件内容
+                    fileAttachmentHtml = `<div class="file-attachment"><span class="file-icon">📄</span><span class="file-name">${escapeHtml(msg.fileMeta.name)}</span></div>`;
+                    displayContent = msg.textOnly || msg.content.replace(/\[文件.*?\]\n内容:[\s\S]*/g, '').trim();
+                    if (!displayContent) displayContent = '📎 上传了文件';
+                }
+                
+                bubbleContent = `<div class="bubble" data-msg-idx="${i}" data-role="${msg.role}">${fileAttachmentHtml}${displayContent ? escapeHtml(displayContent) : ''}<button class="copy-btn" data-text="${escapeHtml(msg.content.replace(/\[文件.*?\]\n内容:[\s\S]*/g, '').trim() || msg.content)}">📋 复制</button></div>`;
+                msgDiv.innerHTML = `<div class="avatar">${avatar}</div>${bubbleContent}`;
+                messagesContainer.appendChild(msgDiv);
+            }
+        }
+        // 绑定复制按钮事件
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rawText = btn.getAttribute('data-text') || '';
+                copyToClipboard(rawText, btn);
+            });
+        });
+        scrollToBottom();
+    }
+
+    // 复制功能 + 反馈
+    function copyToClipboard(text, btnElement) {
+        if (!text) {
+            alert('无内容可复制');
+            return;
+        }
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = btnElement.innerText;
+            btnElement.innerText = '✅ 已复制';
+            btnElement.classList.add('copied');
+            setTimeout(() => {
+                btnElement.innerText = originalText;
+                btnElement.classList.remove('copied');
+            }, 1500);
+        }).catch(() => {
+            alert('复制失败，手动复制吧');
         });
     }
 
-    function switchChat(id) { if(!isGenerating) { currentId = id; renderHistory(); renderChat(); closeSidebar(); } }
-    
-    function deleteChat(id) {
-        if(conversations.length === 1) { alert('至少保留一个对话'); return; }
-        conversations = conversations.filter(c => c.id !== id);
-        if(currentId === id) currentId = conversations[0].id;
-        save(); renderHistory(); renderChat();
-    }
-
-    function newChat() {
-        let newId = Date.now().toString();
-        conversations.unshift({ id: newId, title: '新对话', messages: [] });
-        currentId = newId;
-        save(); renderHistory(); renderChat();
-        closeSidebar();
-    }
-
-    function renderChat() {
-        let conv = conversations.find(c => c.id === currentId);
-        if(!conv) return;
-        msgContainer.innerHTML = '';
-        if(conv.messages.length === 0) {
-            msgContainer.innerHTML = '<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">有什么可以帮你的？上传文件或直接提问~</div></div>';
-        } else {
-            conv.messages.forEach(msg => {
-                let div = document.createElement('div');
-                div.className = `message ${msg.role}`;
-                div.innerHTML = `<div class="avatar">${msg.role === 'user' ? '👤' : '🤖'}</div><div class="bubble">${escapeHtml(msg.content)}</div>`;
-                msgContainer.appendChild(div);
-            });
+    function addMessageToCurrent(role, content, fileMeta = null, saveNow = true) {
+        const conv = conversations.find(c => c.id === currentConversationId);
+        if (!conv) return;
+        let messageObj = { role, content, timestamp: Date.now() };
+        if (fileMeta && role === 'user') {
+            messageObj.fileMeta = fileMeta;
+            // 剥离出纯文本用于复制按钮展示
+            let cleanText = content.replace(/\[文件.*?\]\n内容:[\s\S]*/g, '').trim();
+            if (!cleanText && fileMeta) cleanText = `[文件] ${fileMeta.name}`;
+            messageObj.textOnly = cleanText;
         }
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-    }
-
-    function addMessage(role, content, saveNow=true) {
-        let conv = conversations.find(c => c.id === currentId);
-        if(conv) {
-            conv.messages.push({ role, content });
-            if(saveNow) save();
-            if(role === 'user' && conv.messages.filter(m=>m.role==='user').length === 1) {
-                conv.title = content.slice(0, 25);
-                renderHistory();
-            }
-            renderChat();
+        conv.messages.push(messageObj);
+        if (saveNow) saveConversations();
+        // 自动更新标题
+        if (role === 'user' && conv.messages.filter(m => m.role === 'user').length === 1) {
+            let newTitle = content.slice(0, 28);
+            if (newTitle.length < 1) newTitle = '新对话';
+            conv.title = newTitle;
+            saveConversations();
+            renderHistory();
         }
+        renderCurrentChat();
     }
 
-    async function sendMessage() {
-        if(isGenerating) { alert('请等待回复完成'); return; }
-        let userText = msgInput.value.trim();
-        if(!userText && !pendingFile) return;
-        
-        let finalContent = userText;
-        if(pendingFile) {
-            finalContent = userText + `\n\n[文件: ${pendingFile.name}]\n内容:\n${pendingFile.content.slice(0, 2000)}`;
+    // 优化流式请求 (减少渲染开销)
+    async function sendMessageWithFile() {
+        if (isGenerating) {
+            alert('正在回复中，请稍后');
+            return;
+        }
+        let userText = messageInput.value.trim();
+        if (!userText && !pendingFile) return;
+
+        let finalUserContent = userText;
+        let attachedFileMeta = null;
+        let rawFileContentForContext = '';
+
+        if (pendingFile) {
+            attachedFileMeta = { name: pendingFile.name };
+            // 将文件内容注入API上下文，但不在UI中展示大段内容（仅在API消息中提供）
+            rawFileContentForContext = `\n\n[文件: ${pendingFile.name}]\n文件内容:\n${pendingFile.content.slice(0, 4000)}${pendingFile.content.length > 4000 ? '\n...(内容已截断)' : ''}`;
+            finalUserContent = userText ? userText + rawFileContentForContext : `请根据上传的文件《${pendingFile.name}》回答问题。`;
+            // 清除待上传文件
             pendingFile = null;
-            filePreview.innerHTML = '';
-            fileInput.value = '';
+            clearFilePreview();
         }
-        if(!finalContent) return;
-        
-        addMessage('user', finalContent);
-        msgInput.value = '';
-        msgInput.style.height = 'auto';
-        
-        // 占位AI消息
-        let conv = conversations.find(c => c.id === currentId);
-        let aiMsgIndex = conv.messages.length;
+
+        if (!finalUserContent && !rawFileContentForContext) return;
+
+        // 保存用户消息（带文件卡片信息，隐藏冗长内容）
+        const displayMessage = userText || (attachedFileMeta ? `📎 上传了文件: ${attachedFileMeta.name}` : '');
+        addMessageToCurrent('user', finalUserContent, attachedFileMeta, true);
+        messageInput.value = '';
+        autoResizeTextarea();
+
+        // AI占位
+        const conv = conversations.find(c => c.id === currentConversationId);
+        const assistantMsgIndex = conv.messages.length;
         conv.messages.push({ role: 'assistant', content: '' });
-        save();
-        renderChat();
-        
+        saveConversations();
+        renderCurrentChat();
+
         isGenerating = true;
         sendBtn.disabled = true;
-        
-        let apiMessages = conv.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
-        apiMessages.unshift({ role: 'system', content: '你是DeepSeek助手，根据上下文和文件内容回答问题。' });
-        
+
+        // 构建请求消息
+        const historyMessages = conv.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+        const apiMessages = [
+            { role: 'system', content: '你是一个智能助手，帮助用户解析文件内容并回答问题。根据提供的文件内容或对话历史给出准确回答。' },
+            ...historyMessages
+        ];
+
         try {
-            let res = await fetch(DEEPSEEK_URL, {
+            const response = await fetch(DEEPSEEK_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-                body: JSON.stringify({ model: 'deepseek-chat', messages: apiMessages, stream: true })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: MODEL,
+                    messages: apiMessages,
+                    stream: true,
+                    temperature: 0.7
+                })
             });
-            if(!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            let reader = res.body.getReader();
-            let decoder = new TextDecoder();
-            let full = '';
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`API错误 ${response.status}: ${errText.slice(0, 200)}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
             let buffer = '';
-            while(true) {
-                let { done, value } = await reader.read();
-                if(done) break;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
                 buffer += decoder.decode(value, { stream: true });
-                let lines = buffer.split('\n');
+                const lines = buffer.split('\n');
                 buffer = lines.pop();
-                for(let line of lines) {
-                    if(line.startsWith('data: ')) {
-                        let data = line.slice(6);
-                        if(data === '[DONE]') continue;
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed === 'data: [DONE]') continue;
+                    if (trimmed.startsWith('data: ')) {
+                        const jsonStr = trimmed.slice(6);
                         try {
-                            let json = JSON.parse(data);
-                            let delta = json.choices[0]?.delta?.content || '';
-                            if(delta) {
-                                full += delta;
-                                let curr = conversations.find(c => c.id === currentId);
-                                if(curr && curr.messages[aiMsgIndex]) {
-                                    curr.messages[aiMsgIndex].content = full;
-                                    let bubbles = document.querySelectorAll('.message.assistant .bubble');
-                                    if(bubbles[aiMsgIndex]) bubbles[aiMsgIndex].innerHTML = escapeHtml(full);
+                            const parsed = JSON.parse(jsonStr);
+                            const delta = parsed.choices[0]?.delta?.content || '';
+                            if (delta) {
+                                fullContent += delta;
+                                const currentConv = conversations.find(c => c.id === currentConversationId);
+                                if (currentConv && currentConv.messages[assistantMsgIndex]) {
+                                    currentConv.messages[assistantMsgIndex].content = fullContent;
+                                    // 实时局部更新最后一条消息 (性能优化)
+                                    const bubbles = document.querySelectorAll('.message.assistant .bubble');
+                                    if (bubbles[assistantMsgIndex]) {
+                                        const bubbleDiv = bubbles[assistantMsgIndex];
+                                        bubbleDiv.innerHTML = escapeHtml(fullContent) + `<button class="copy-btn" data-text="${escapeHtml(fullContent)}">📋 复制</button>`;
+                                        // 重新绑定复制按钮
+                                        const newBtn = bubbleDiv.querySelector('.copy-btn');
+                                        if (newBtn) {
+                                            newBtn.addEventListener('click', (e) => {
+                                                e.stopPropagation();
+                                                copyToClipboard(fullContent, newBtn);
+                                            });
+                                        }
+                                    }
                                 }
-                                msgContainer.scrollTop = msgContainer.scrollHeight;
+                                scrollToBottom();
                             }
                         } catch(e) {}
                     }
                 }
             }
-            save();
-            renderChat();
-        } catch(err) {
-            let curr = conversations.find(c => c.id === currentId);
-            if(curr && curr.messages[aiMsgIndex]) curr.messages[aiMsgIndex].content = `错误: ${err.message}`;
-            save(); renderChat();
+            // 最终保存
+            const finalConv = conversations.find(c => c.id === currentConversationId);
+            if (finalConv && finalConv.messages[assistantMsgIndex]) {
+                finalConv.messages[assistantMsgIndex].content = fullContent || '(无回复内容)';
+            }
+            saveConversations();
+            renderCurrentChat();  // 最终渲染确保复制按钮完美绑定
+        } catch (err) {
+            console.error(err);
+            const errorMsg = `请求失败: ${err.message}`;
+            const convErr = conversations.find(c => c.id === currentConversationId);
+            if (convErr && convErr.messages[assistantMsgIndex]) {
+                convErr.messages[assistantMsgIndex].content = errorMsg;
+                saveConversations();
+                renderCurrentChat();
+            } else {
+                addMessageToCurrent('assistant', errorMsg, null, true);
+            }
+        } finally {
+            isGenerating = false;
+            sendBtn.disabled = false;
+            scrollToBottom();
         }
-        isGenerating = false;
-        sendBtn.disabled = false;
     }
-    
-    function handleFile(file) {
-        let reader = new FileReader();
+
+    // 文件读取 (不爆内容)
+    function handleFileUpload(file) {
+        if (!file) return;
+        const reader = new FileReader();
         reader.onload = (e) => {
             let content = e.target.result;
-            if(content.length > 5000) content = content.slice(0, 5000) + '\n...(已截断)';
-            pendingFile = { name: file.name, content: content };
-            filePreview.innerHTML = `<span>📄 ${escapeHtml(file.name)}</span><button class="remove-file">✖</button>`;
-            document.querySelector('.remove-file')?.addEventListener('click', () => { pendingFile = null; filePreview.innerHTML = ''; fileInput.value = ''; });
+            if (content.length > 6000) {
+                content = content.slice(0, 6000) + '\n...(内容已截断至前6000字符)';
+            }
+            pendingFile = {
+                name: file.name,
+                content: content
+            };
+            showFilePreview(file.name);
         };
+        reader.onerror = () => alert('文件读取失败');
         reader.readAsText(file, 'UTF-8');
     }
-    
-    function escapeHtml(s) { if(!s) return ''; return s.replace(/[&<>]/g, function(m){ return m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'; }); }
-    function autoResize() { this.style.height = 'auto'; this.style.height = Math.min(100, this.scrollHeight) + 'px'; }
-    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
-    function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
-    
-    msgInput.addEventListener('input', autoResize);
-    sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-    fileInput.addEventListener('change', (e) => { if(e.target.files[0]) handleFile(e.target.files[0]); });
-    newChatBtn.addEventListener('click', newChat);
-    menuToggle.addEventListener('click', () => { if(sidebar.classList.contains('open')) closeSidebar(); else openSidebar(); });
+
+    function showFilePreview(name) {
+        filePreviewArea.style.display = 'flex';
+        filePreviewArea.innerHTML = `<span>📎 已选择: ${escapeHtml(name)}</span><button class="remove-file" id="removeFileBtn">✖</button>`;
+        const removeBtn = document.getElementById('removeFileBtn');
+        if (removeBtn) removeBtn.onclick = () => { pendingFile = null; clearFilePreview(); };
+    }
+
+    function clearFilePreview() {
+        filePreviewArea.style.display = 'none';
+        filePreviewArea.innerHTML = '';
+        pendingFile = null;
+        fileInput.value = '';
+    }
+
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // 点击顶部回到最新消息（滚动到底部）
+    function scrollToLatest() {
+        scrollToBottom();
+    }
+
+    function autoResizeTextarea() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(100, messageInput.scrollHeight) + 'px';
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function newConversation() {
+        if (isGenerating) {
+            alert('请等待回复完成');
+            return;
+        }
+        const newId = Date.now().toString();
+        conversations.unshift({
+            id: newId,
+            title: '新对话',
+            messages: [],
+            createdAt: Date.now()
+        });
+        currentConversationId = newId;
+        saveConversations();
+        renderHistory();
+        renderCurrentChat();
+        if (window.innerWidth < 768) closeSidebar();
+    }
+
+    function closeSidebar() {
+        sidebarEl.classList.remove('open');
+        overlay.classList.remove('show');
+    }
+    function openSidebar() {
+        sidebarEl.classList.add('open');
+        overlay.classList.add('show');
+    }
+
+    // 事件绑定
+    menuToggle.addEventListener('click', () => {
+        if (sidebarEl.classList.contains('open')) closeSidebar();
+        else openSidebar();
+    });
     overlay.addEventListener('click', closeSidebar);
-    
-    load();
+    newChatBtn.addEventListener('click', newConversation);
+    sendBtn.addEventListener('click', () => sendMessageWithFile());
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessageWithFile();
+        }
+    });
+    messageInput.addEventListener('input', autoResizeTextarea);
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+        }
+    });
+    scrollToTopBtn.addEventListener('click', scrollToLatest);
+
+    // 初始化
+    loadConversationsFromStorage();
+    renderHistory();
+    renderCurrentChat();
+    autoResizeTextarea();
+    if (!API_KEY) {
+        setTimeout(() => alert('⚠️ 未设置 DeepSeek API Key，请刷新页面后重新输入'), 100);
+    }
 </script>
 </body>
 </html>
