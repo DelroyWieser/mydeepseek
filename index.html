@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek 流畅版 · 编辑重答</title>
+    <title>DeepSeek 编辑重答版 · 流畅稳定</title>
     <style>
         * {
             margin: 0;
@@ -21,7 +21,6 @@
             display: flex;
         }
 
-        /* 侧边栏 */
         .sidebar {
             position: fixed;
             top: 0;
@@ -118,7 +117,6 @@
             padding: 4px 8px;
         }
 
-        /* 主聊天区 */
         .main {
             flex: 1;
             display: flex;
@@ -169,7 +167,6 @@
             justify-content: center;
         }
 
-        /* 消息容器 */
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -224,7 +221,6 @@
             background: #2b4f7c;
         }
 
-        /* 编辑按钮组 */
         .message-actions {
             display: flex;
             gap: 8px;
@@ -239,7 +235,6 @@
             padding: 4px 10px;
             border-radius: 16px;
             cursor: pointer;
-            transition: 0.1s;
         }
         .edit-btn:hover, .regenerate-btn:hover {
             background: #3a3a3c;
@@ -256,7 +251,6 @@
             margin-top: 6px;
             display: inline-block;
         }
-        /* 编辑模式 */
         .edit-textarea {
             width: 100%;
             background: #2c2c2e;
@@ -286,7 +280,6 @@
             background: #3a3a3c;
         }
 
-        /* 输入区 */
         .input-area {
             background: #0f0f0f;
             border-top: 1px solid #2c2c2e;
@@ -453,17 +446,14 @@
     const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
     const MODEL = 'deepseek-chat';
     
-    // 数据结构
     let conversations = [];
     let currentId = null;
     let isGenerating = false;
     let pendingFile = null;
-    
-    // 滚动控制
     let autoScrollEnabled = true;
     let scrollTimeout = null;
+    let currentStreamController = null;
     
-    // DOM 元素
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
     const menuToggle = document.getElementById('menuToggle');
@@ -477,7 +467,6 @@
     const scrollTopBtn = document.getElementById('scrollTopBtn');
     const scrollBottomBtn = document.getElementById('scrollBottomBtn');
     
-    // ========== 辅助函数 ==========
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -555,7 +544,6 @@
         if (window.innerWidth < 768) closeSidebar();
     }
     
-    // 核心渲染：每条消息附带编辑/重新生成按钮（仅用户消息）
     function renderMessages() {
         let conv = conversations.find(c => c.id === currentId);
         if (!conv) return;
@@ -570,20 +558,14 @@
                 let avatar = msg.role === 'user' ? '👤' : '🤖';
                 let formatted = formatLines(msg.content);
                 div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble" data-msg-idx="${i}">${formatted}</div>`;
-                
                 const bubble = div.querySelector('.bubble');
-                // 为 assistant 消息添加复制按钮
                 if (msg.role === 'assistant' && msg.content) {
                     let copyBtn = document.createElement('button');
                     copyBtn.innerText = '📋 复制';
                     copyBtn.className = 'copy-btn';
-                    copyBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        copyToClip(msg.content);
-                    };
+                    copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(msg.content); };
                     bubble.appendChild(copyBtn);
                 }
-                // 为用户消息添加编辑按钮和重新生成按钮
                 if (msg.role === 'user') {
                     let actionDiv = document.createElement('div');
                     actionDiv.className = 'message-actions';
@@ -611,10 +593,8 @@
         scrollToBottom();
     }
     
-    // 编辑模式：将气泡内容替换为文本框
     function enableEditMode(bubbleElement, originalContent, messageIndex) {
         if (isGenerating) { alert('请等待当前回复完成'); return; }
-        // 保存原始内容
         const textarea = document.createElement('textarea');
         textarea.value = originalContent;
         textarea.className = 'edit-textarea';
@@ -637,68 +617,51 @@
         saveBtn.onclick = async () => {
             const newText = textarea.value.trim();
             if (!newText) { alert('内容不能为空'); return; }
-            // 更新用户消息内容
             let conv = conversations.find(c => c.id === currentId);
             if (conv && conv.messages[messageIndex] && conv.messages[messageIndex].role === 'user') {
                 conv.messages[messageIndex].content = newText;
-                // 删除该用户消息之后的所有 assistant 消息（重新生成）
-                let removeCount = 0;
                 while (conv.messages.length > messageIndex + 1) {
                     conv.messages.pop();
-                    removeCount++;
                 }
                 saveData();
                 renderMessages();
-                // 自动触发重新生成（使用新的用户消息）
                 if (!isGenerating) {
-                    await callDeepSeekForIndex(messageIndex);
+                    await generateForUserIndex(messageIndex);
                 }
             }
         };
-        cancelBtn.onclick = () => {
-            renderMessages(); // 恢复原状
-        };
+        cancelBtn.onclick = () => { renderMessages(); };
     }
     
-    // 重新生成：删除当前用户消息之后的 assistant 回复，然后重新请求
     async function regenerateAnswer(userMsgIndex) {
         if (isGenerating) { alert('请等待回复完成'); return; }
         let conv = conversations.find(c => c.id === currentId);
-        if (!conv) return;
-        // 确保该索引是用户消息
-        if (conv.messages[userMsgIndex]?.role !== 'user') return;
-        // 删除该用户消息之后的所有消息（通常是一个 assistant 回复）
+        if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
         while (conv.messages.length > userMsgIndex + 1) {
             conv.messages.pop();
         }
         saveData();
         renderMessages();
-        // 重新调用API生成回复
-        await callDeepSeekForIndex(userMsgIndex);
+        await generateForUserIndex(userMsgIndex);
     }
     
-    // 针对某条用户消息（索引）生成回复（流式）
-    async function callDeepSeekForIndex(userMsgIndex) {
+    async function generateForUserIndex(userMsgIndex) {
         if (isGenerating) return;
         let conv = conversations.find(c => c.id === currentId);
         if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
         
-        // 添加一个占位 assistant 消息
         conv.messages.push({ role: 'assistant', content: '' });
         saveData();
         renderMessages();
         
-        // 获取最后一条 assistant 气泡用于流式更新
         const assistantBubbles = document.querySelectorAll('.message.assistant .bubble');
         let targetBubble = assistantBubbles[assistantBubbles.length - 1];
         if (!targetBubble) return;
         
-        // 构建上下文：取该用户消息之前的所有消息（包含系统提示）
         let apiMessages = [];
         apiMessages.push({ role: 'system', content: '你是DeepSeek助手，回答时请使用换行分段让阅读更舒适。如果用户上传了文件，根据文件内容回答，不要展示文件原文。直接给出清晰、分段的结果。' });
         for (let i = 0; i <= userMsgIndex; i++) {
             let msg = conv.messages[i];
-            if (msg.role === 'assistant' && i === userMsgIndex) continue; // 跳过占位
             apiMessages.push({ role: msg.role, content: msg.content });
         }
         
@@ -709,13 +672,7 @@
             let response = await fetch(DEEPSEEK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-                body: JSON.stringify({
-                    model: MODEL,
-                    messages: apiMessages,
-                    stream: true,
-                    temperature: 0.6,
-                    max_tokens: 2048
-                })
+                body: JSON.stringify({ model: MODEL, messages: apiMessages, stream: true, temperature: 0.6, max_tokens: 2048 })
             });
             if (!response.ok) throw new Error(`API ${response.status}`);
             
@@ -754,21 +711,18 @@
                 }
             }
             targetBubble.innerHTML = formatLines(fullAnswer || '(空回复)');
-            // 添加复制按钮
             let copyBtn = document.createElement('button');
             copyBtn.innerText = '📋 复制';
             copyBtn.className = 'copy-btn';
             copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(fullAnswer); };
             targetBubble.appendChild(copyBtn);
             
-            // 更新内存中的消息
             let currentConv = conversations.find(c => c.id === currentId);
             if (currentConv && currentConv.messages[currentConv.messages.length-1]?.role === 'assistant') {
                 currentConv.messages[currentConv.messages.length-1].content = fullAnswer;
                 saveData();
             }
         } catch (err) {
-            console.error(err);
             targetBubble.innerHTML = formatLines(`❌ 请求失败: ${err.message}`);
             let copyBtn = document.createElement('button');
             copyBtn.innerText = '📋 复制';
@@ -802,45 +756,40 @@
         }
     }
     
-    // 普通发送（新增用户消息并生成）
     async function sendMessage() {
         if (isGenerating) { alert('请等待回复完成'); return; }
         let userText = msgInput.value.trim();
         if (!userText && !pendingFile) return;
         
         let finalDisplayText = userText;
-        let apiExtraContext = '';
+        let fileContentForApi = '';
         if (pendingFile) {
             finalDisplayText = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
-            apiExtraContext = `\n\n===== 上传文件 "${pendingFile.name}" 内容 =====\n${pendingFile.content.slice(0, 5000)}\n===== 结束 =====\n请根据文件内容回答。`;
+            fileContentForApi = `\n\n===== 上传文件 "${pendingFile.name}" 内容 =====\n${pendingFile.content.slice(0, 5000)}\n===== 文件内容结束 =====\n请根据文件内容回答。`;
             pendingFile = null;
             clearPreview();
         }
         
         let conv = conversations.find(c => c.id === currentId);
         let userMsgIndex = conv.messages.length;
-        conv.messages.push({ role: 'user', content: finalDisplayText });
+        let finalContentForStorage = finalDisplayText;
+        let finalContentForApi = finalDisplayText + fileContentForApi;
+        
+        conv.messages.push({ role: 'user', content: finalContentForStorage });
         saveData();
         renderMessages();
         
         msgInput.value = '';
         msgInput.style.height = 'auto';
         
-        // 如果有额外文件上下文，临时附加到最后一条用户消息的API调用中，但不修改显示内容
-        if (apiExtraContext && conv.messages[userMsgIndex]) {
-            let originalContent = conv.messages[userMsgIndex].content;
-            // 仅用于API调用，保存一份临时附加内容，但不改变显示消息
-            conv.messages[userMsgIndex]._apiContext = apiExtraContext;
-        }
+        // 临时替换API用的内容
+        let originalContent = conv.messages[userMsgIndex].content;
+        conv.messages[userMsgIndex].content = finalContentForApi;
+        await generateForUserIndex(userMsgIndex);
+        conv.messages[userMsgIndex].content = originalContent;
+        saveData();
+        renderMessages();
         
-        // 调用API生成回复
-        await callDeepSeekForIndex(userMsgIndex);
-        
-        // 清理临时上下文
-        if (conv.messages[userMsgIndex] && conv.messages[userMsgIndex]._apiContext) {
-            delete conv.messages[userMsgIndex]._apiContext;
-        }
-        // 更新标题
         if (conv.messages.filter(m => m.role === 'user').length === 1) {
             conv.title = finalDisplayText.slice(0, 26) || '新对话';
             saveData();
@@ -848,11 +797,6 @@
         }
     }
     
-    // 覆盖 callDeepSeekForIndex 使其支持文件临时上下文
-    const originalCall = callDeepSeekForIndex;
-    window.callDeepSeekForIndex = callDeepSeekForIndex;
-    
-    // 文件处理
     function onFileSelected(file) {
         if (!file) return;
         let reader = new FileReader();
@@ -880,9 +824,7 @@
         msgContainer.scrollTo({ top: 0, behavior: 'smooth' });
         setTimeout(() => { autoScrollEnabled = true; }, 500);
     }
-    function scrollToBottom() { 
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-    }
+    function scrollToBottom() { msgContainer.scrollTop = msgContainer.scrollHeight; }
     
     function autoResize() {
         msgInput.style.height = 'auto';
@@ -895,4 +837,38 @@
     function newConversation() {
         if (isGenerating) { alert('请等待回复完成'); return; }
         let newId = Date.now().toString();
-        conversations.unshift({ 
+        conversations.unshift({ id: newId, title: '新对话', messages: [] });
+        currentId = newId;
+        saveData();
+        renderSidebar();
+        renderMessages();
+        if (window.innerWidth < 768) closeSidebar();
+    }
+    
+    function onUserScroll() {
+        if (isGenerating) {
+            autoScrollEnabled = false;
+            if (scrollTimeout) clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => { autoScrollEnabled = true; }, 3000);
+        }
+    }
+    
+    menuToggle.addEventListener('click', () => { if (sidebar.classList.contains('open')) closeSidebar(); else openSidebar(); });
+    overlay.addEventListener('click', closeSidebar);
+    newChatBtn.addEventListener('click', newConversation);
+    sendBtn.addEventListener('click', sendMessage);
+    msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    msgInput.addEventListener('input', autoResize);
+    fileInput.addEventListener('change', (e) => { if (e.target.files[0]) onFileSelected(e.target.files[0]); });
+    scrollTopBtn.addEventListener('click', scrollToTop);
+    scrollBottomBtn.addEventListener('click', scrollToBottom);
+    msgContainer.addEventListener('scroll', onUserScroll);
+    
+    loadData();
+    renderSidebar();
+    renderMessages();
+    autoResize();
+    if (!API_KEY) setTimeout(() => alert('⚠️ 未设置 API Key，请刷新页面输入'), 300);
+</script>
+</body>
+</html>
