@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek 增强版 · 全局搜索 + 完整文件读取</title>
+    <title>DeepSeek 完整版 · 搜索 + 文件全读</title>
     <style>
         * {
             margin: 0;
@@ -68,10 +68,6 @@
             border-radius: 14px;
             font-size: 15px;
             font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
             cursor: pointer;
         }
 
@@ -162,12 +158,8 @@
             border-radius: 30px;
             font-size: 20px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        /* 搜索按钮和面板 */
         .search-btn {
             background: #2c2c2e;
             border: none;
@@ -177,10 +169,8 @@
             border-radius: 30px;
             font-size: 18px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
+
         .search-panel {
             position: absolute;
             top: 70px;
@@ -194,9 +184,11 @@
             border: 1px solid #3a3a3c;
             display: none;
         }
+
         .search-panel.show {
             display: block;
         }
+
         .search-input {
             width: 100%;
             background: #2c2c2e;
@@ -206,18 +198,21 @@
             border-radius: 24px;
             font-size: 14px;
         }
+
         .search-stats {
             font-size: 11px;
             color: #8e8e93;
             margin-top: 8px;
             text-align: center;
         }
+
         .search-nav {
             display: flex;
             gap: 12px;
             justify-content: center;
             margin-top: 8px;
         }
+
         .search-nav-btn {
             background: #2b4f7c;
             border: none;
@@ -227,15 +222,14 @@
             cursor: pointer;
             font-size: 12px;
         }
-        .search-nav-btn:disabled {
-            opacity: 0.4;
-        }
+
         .highlight {
             background-color: #ffd966;
             color: #1a1a1a;
             border-radius: 2px;
             padding: 0 2px;
         }
+
         .highlight-current {
             background-color: #ffaa33;
             color: #1a1a1a;
@@ -252,14 +246,12 @@
             flex-direction: column;
             gap: 16px;
             scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
         }
 
         .message {
             display: flex;
             gap: 10px;
             max-width: 100%;
-            position: relative;
         }
 
         .message.user {
@@ -304,6 +296,7 @@
             margin-top: 6px;
             justify-content: flex-end;
         }
+
         .edit-btn, .regenerate-btn {
             background: #2c2c2e;
             border: none;
@@ -313,6 +306,7 @@
             border-radius: 16px;
             cursor: pointer;
         }
+
         .copy-btn {
             background: #3a3a3c;
             border: none;
@@ -324,6 +318,7 @@
             margin-top: 6px;
             display: inline-block;
         }
+
         .edit-textarea {
             width: 100%;
             background: #2c2c2e;
@@ -335,11 +330,13 @@
             font-size: 14px;
             resize: vertical;
         }
+
         .edit-actions {
             display: flex;
             gap: 8px;
             margin-top: 6px;
         }
+
         .save-edit-btn, .cancel-edit-btn {
             background: #2b4f7c;
             border: none;
@@ -349,6 +346,7 @@
             font-size: 12px;
             cursor: pointer;
         }
+
         .cancel-edit-btn {
             background: #3a3a3c;
         }
@@ -407,9 +405,6 @@
             border-radius: 30px;
             font-size: 18px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .send-btn:disabled {
@@ -444,6 +439,7 @@
             margin-right: 6px;
             animation: pulse 1s infinite;
         }
+
         @keyframes pulse {
             0% { opacity: 0.3; }
             100% { opacity: 1; }
@@ -478,12 +474,12 @@
 <div class="main">
     <div class="top-bar">
         <button class="menu-btn" id="menuToggle">☰</button>
-        <div class="logo-area">DeepSeek 搜索版</div>
+        <div class="logo-area">DeepSeek 完整版</div>
         <button class="search-btn" id="searchBtn">🔍</button>
-        <button class="nav-btn" id="scrollTopBtn" title="回到顶部">↑</button>
-        <button class="nav-btn" id="scrollBottomBtn" title="跳到底部">↓</button>
+        <button class="nav-btn" id="scrollTopBtn">↑</button>
+        <button class="nav-btn" id="scrollBottomBtn">↓</button>
     </div>
-    <!-- 搜索面板 -->
+
     <div class="search-panel" id="searchPanel">
         <input type="text" id="searchInput" class="search-input" placeholder="搜索对话内容...">
         <div class="search-stats" id="searchStats">0 个结果</div>
@@ -496,15 +492,13 @@
     <div class="messages-container" id="messagesContainer">
         <div class="message assistant">
             <div class="avatar">🤖</div>
-            <div class="bubble">✨ 新增全局搜索功能 (🔍)<br>• 可搜索当前对话中所有消息内容<br>• 支持高亮并跳转到匹配位置<br>• 文件读取已优化：完整读取且不显示原文</div>
+            <div class="bubble">✨ 功能说明<br>• 🔍 搜索当前对话所有内容，高亮并跳转<br>• 📎 上传文件完整读取，不显示原文<br>• ✏️ 编辑消息后自动重新生成</div>
         </div>
     </div>
 
     <div class="input-area">
         <div class="input-wrapper">
-            <label class="file-label" title="上传文件 (完整读取)">📎
-                <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml">
-            </label>
+            <label class="file-label">📎<input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml"></label>
             <textarea class="message-input" id="messageInput" placeholder="输入消息..." rows="1"></textarea>
             <button class="send-btn" id="sendBtn">➤</button>
         </div>
@@ -513,16 +507,14 @@
 </div>
 
 <script>
-    // ========== 配置 ==========
     let API_KEY = localStorage.getItem('deepseek_api_key');
     if (!API_KEY) {
-        let inputKey = prompt('🔑 输入 DeepSeek API Key (platform.deepseek.com)\n密钥仅存本地，安全可靠');
+        let inputKey = prompt('🔑 输入 DeepSeek API Key');
         if (inputKey?.trim()) {
             API_KEY = inputKey.trim();
             localStorage.setItem('deepseek_api_key', API_KEY);
         } else {
             API_KEY = '';
-            alert('未输入 API Key，对话无法发送');
         }
     }
 
@@ -532,13 +524,15 @@
     let conversations = [];
     let currentId = null;
     let isGenerating = false;
-    let pendingFile = null;      // { name, content (完整内容) }
+    let pendingFile = null;
     let autoScrollEnabled = true;
     let scrollTimeout = null;
     
-    // 搜索相关变量
-    let currentSearchMatches = [];    // 存储 { messageIndex, startIndex, endIndex, text }
-    let currentMatchIdx = -1;
+    // 搜索状态
+    let searchMode = false;
+    let searchKeyword = '';
+    let searchMatches = [];      // { msgIdx, start, end }
+    let currentMatchIndex = -1;
     
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -562,10 +556,7 @@
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
+            return m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;');
         });
     }
     
@@ -574,29 +565,213 @@
         return escapeHtml(text).replace(/\n/g, '<br>');
     }
     
-    // 带高亮的渲染 (用于搜索时)
-    function highlightText(text, matchesForThisMsg, currentMsgIdx, msgIdx) {
-        if (!matchesForThisMsg || matchesForThisMsg.length === 0) {
-            return formatLines(text);
+    // 带高亮渲染
+    function renderWithHighlights() {
+        let conv = conversations.find(c => c.id === currentId);
+        if (!conv) return;
+        msgContainer.innerHTML = '';
+        
+        if (conv.messages.length === 0) {
+            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">暂无消息</div></div>`;
+            return;
         }
-        let result = '';
-        let lastIdx = 0;
-        // 按起始位置排序
-        const sorted = [...matchesForThisMsg].sort((a,b) => a.startIndex - b.startIndex);
-        for (let match of sorted) {
-            if (match.startIndex > lastIdx) {
-                result += escapeHtml(text.substring(lastIdx, match.startIndex));
+        
+        // 为每条消息构建匹配映射
+        const msgMatchesMap = new Map();
+        for (let match of searchMatches) {
+            if (!msgMatchesMap.has(match.msgIdx)) {
+                msgMatchesMap.set(match.msgIdx, []);
             }
-            const matchText = text.substring(match.startIndex, match.endIndex);
-            const isCurrent = (currentMatchIdx === match.globalIdx);
-            const className = isCurrent ? 'highlight-current' : 'highlight';
-            result += `<span class="${className}">${escapeHtml(matchText)}</span>`;
-            lastIdx = match.endIndex;
+            msgMatchesMap.get(match.msgIdx).push(match);
         }
-        if (lastIdx < text.length) {
-            result += escapeHtml(text.substring(lastIdx));
+        
+        for (let i = 0; i < conv.messages.length; i++) {
+            const msg = conv.messages[i];
+            const matches = msgMatchesMap.get(i) || [];
+            let formattedContent;
+            
+            if (matches.length > 0) {
+                // 高亮处理
+                let result = '';
+                let lastPos = 0;
+                matches.sort((a, b) => a.start - b.start);
+                for (let match of matches) {
+                    if (match.start > lastPos) {
+                        result += escapeHtml(msg.content.substring(lastPos, match.start));
+                    }
+                    const matchText = msg.content.substring(match.start, match.end);
+                    const isCurrent = (searchMode && currentMatchIndex === match.globalIdx);
+                    const className = isCurrent ? 'highlight-current' : 'highlight';
+                    result += `<span class="${className}">${escapeHtml(matchText)}</span>`;
+                    lastPos = match.end;
+                }
+                if (lastPos < msg.content.length) {
+                    result += escapeHtml(msg.content.substring(lastPos));
+                }
+                formattedContent = result.replace(/\n/g, '<br>');
+            } else {
+                formattedContent = formatLines(msg.content);
+            }
+            
+            const div = document.createElement('div');
+            div.className = `message ${msg.role}`;
+            const avatar = msg.role === 'user' ? '👤' : '🤖';
+            div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${formattedContent}</div>`;
+            const bubble = div.querySelector('.bubble');
+            
+            if (msg.role === 'assistant' && msg.content) {
+                const copyBtn = document.createElement('button');
+                copyBtn.innerText = '📋 复制';
+                copyBtn.className = 'copy-btn';
+                copyBtn.onclick = () => copyToClip(msg.content);
+                bubble.appendChild(copyBtn);
+            }
+            if (msg.role === 'user') {
+                const actionDiv = document.createElement('div');
+                actionDiv.className = 'message-actions';
+                const editBtn = document.createElement('button');
+                editBtn.innerText = '✏️ 编辑';
+                editBtn.className = 'edit-btn';
+                editBtn.onclick = () => enableEditMode(bubble, msg.content, i);
+                const regenBtn = document.createElement('button');
+                regenBtn.innerText = '🔄 重新生成';
+                regenBtn.className = 'regenerate-btn';
+                regenBtn.onclick = () => regenerateAnswer(i);
+                actionDiv.appendChild(editBtn);
+                actionDiv.appendChild(regenBtn);
+                bubble.appendChild(actionDiv);
+            }
+            msgContainer.appendChild(div);
         }
-        return result.replace(/\n/g, '<br>');
+        scrollToBottom();
+    }
+    
+    function renderMessages() {
+        if (searchMode && searchKeyword) {
+            renderWithHighlights();
+        } else {
+            // 普通渲染
+            let conv = conversations.find(c => c.id === currentId);
+            if (!conv) return;
+            msgContainer.innerHTML = '';
+            if (conv.messages.length === 0) {
+                msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">暂无消息</div></div>`;
+            } else {
+                for (let i = 0; i < conv.messages.length; i++) {
+                    const msg = conv.messages[i];
+                    const div = document.createElement('div');
+                    div.className = `message ${msg.role}`;
+                    const avatar = msg.role === 'user' ? '👤' : '🤖';
+                    div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${formatLines(msg.content)}</div>`;
+                    const bubble = div.querySelector('.bubble');
+                    if (msg.role === 'assistant' && msg.content) {
+                        const copyBtn = document.createElement('button');
+                        copyBtn.innerText = '📋 复制';
+                        copyBtn.className = 'copy-btn';
+                        copyBtn.onclick = () => copyToClip(msg.content);
+                        bubble.appendChild(copyBtn);
+                    }
+                    if (msg.role === 'user') {
+                        const actionDiv = document.createElement('div');
+                        actionDiv.className = 'message-actions';
+                        const editBtn = document.createElement('button');
+                        editBtn.innerText = '✏️ 编辑';
+                        editBtn.className = 'edit-btn';
+                        editBtn.onclick = () => enableEditMode(bubble, msg.content, i);
+                        const regenBtn = document.createElement('button');
+                        regenBtn.innerText = '🔄 重新生成';
+                        regenBtn.className = 'regenerate-btn';
+                        regenBtn.onclick = () => regenerateAnswer(i);
+                        actionDiv.appendChild(editBtn);
+                        actionDiv.appendChild(regenBtn);
+                        bubble.appendChild(actionDiv);
+                    }
+                    msgContainer.appendChild(div);
+                }
+            }
+            scrollToBottom();
+        }
+    }
+    
+    function performSearch() {
+        const keyword = searchInput.value.trim();
+        if (!keyword) {
+            searchMode = false;
+            searchKeyword = '';
+            searchMatches = [];
+            currentMatchIndex = -1;
+            searchStats.innerText = '0 个结果';
+            renderMessages();
+            return;
+        }
+        
+        const conv = conversations.find(c => c.id === currentId);
+        if (!conv) return;
+        
+        const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const matches = [];
+        let globalIdx = 0;
+        
+        for (let msgIdx = 0; msgIdx < conv.messages.length; msgIdx++) {
+            const content = conv.messages[msgIdx].content;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                matches.push({
+                    msgIdx: msgIdx,
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    globalIdx: globalIdx++
+                });
+            }
+        }
+        
+        searchMode = true;
+        searchKeyword = keyword;
+        searchMatches = matches;
+        currentMatchIndex = matches.length > 0 ? 0 : -1;
+        searchStats.innerText = `${matches.length} 个结果${matches.length > 0 ? ` (1/${matches.length})` : ''}`;
+        renderMessages();
+        
+        if (matches.length > 0) {
+            scrollToMatch(0);
+        }
+    }
+    
+    function scrollToMatch(globalIdx) {
+        const match = searchMatches.find(m => m.globalIdx === globalIdx);
+        if (!match) return;
+        const msgElements = document.querySelectorAll('.message');
+        if (msgElements[match.msgIdx]) {
+            msgElements[match.msgIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        currentMatchIndex = globalIdx;
+        searchStats.innerText = `${searchMatches.length} 个结果 (${currentMatchIndex+1}/${searchMatches.length})`;
+        renderMessages();
+    }
+    
+    function nextMatch() {
+        if (searchMatches.length === 0) return;
+        let next = currentMatchIndex + 1;
+        if (next >= searchMatches.length) next = 0;
+        scrollToMatch(next);
+    }
+    
+    function prevMatch() {
+        if (searchMatches.length === 0) return;
+        let prev = currentMatchIndex - 1;
+        if (prev < 0) prev = searchMatches.length - 1;
+        scrollToMatch(prev);
+    }
+    
+    function clearSearch() {
+        searchMode = false;
+        searchKeyword = '';
+        searchMatches = [];
+        currentMatchIndex = -1;
+        searchInput.value = '';
+        searchStats.innerText = '0 个结果';
+        searchPanel.classList.remove('show');
+        renderMessages();
     }
     
     function saveData() {
@@ -613,8 +788,7 @@
             } catch(e) { conversations = []; }
         }
         if (!conversations.length) {
-            let newId = Date.now().toString();
-            conversations = [{ id: newId, title: '新对话', messages: [] }];
+            conversations = [{ id: Date.now().toString(), title: '新对话', messages: [] }];
         }
         if (!currentId || !conversations.find(c => c.id === currentId)) {
             currentId = conversations[0].id;
@@ -622,17 +796,15 @@
     }
     
     function renderSidebar() {
-        if (!historyList) return;
         historyList.innerHTML = '';
         for (let conv of conversations) {
-            let div = document.createElement('div');
+            const div = document.createElement('div');
             div.className = 'history-item';
             if (conv.id === currentId) div.classList.add('active');
-            let title = conv.title;
-            if (!title || title === '新对话') {
-                let firstMsg = conv.messages.find(m => m.role === 'user');
-                title = firstMsg ? firstMsg.content.slice(0, 24) : '新对话';
-                conv.title = title;
+            let title = conv.title || '新对话';
+            if (title === '新对话') {
+                const firstUser = conv.messages.find(m => m.role === 'user');
+                if (firstUser) title = firstUser.content.slice(0, 24);
             }
             div.innerHTML = `<span class="history-title">${escapeHtml(title)}</span><button class="delete-history" data-id="${conv.id}">🗑</button>`;
             div.querySelector('.delete-history').onclick = (e) => {
@@ -650,6 +822,7 @@
         if (currentId === id) currentId = conversations[0].id;
         saveData();
         renderSidebar();
+        clearSearch();
         renderMessages();
     }
     
@@ -657,228 +830,13 @@
         if (isGenerating) { alert('请等待回复完成'); return; }
         currentId = id;
         renderSidebar();
+        clearSearch();
         renderMessages();
         if (window.innerWidth < 768) closeSidebar();
-        // 切换对话后清除搜索高亮
-        clearSearch();
-    }
-    
-    // 清除搜索状态
-    function clearSearch() {
-        currentSearchMatches = [];
-        currentMatchIdx = -1;
-        searchInput.value = '';
-        searchStats.innerText = '0 个结果';
-        searchPanel.classList.remove('show');
-        renderMessages(); // 重新渲染去掉高亮
-    }
-    
-    // 执行搜索
-    function performSearch() {
-        const keyword = searchInput.value.trim();
-        if (!keyword) {
-            clearSearch();
-            return;
-        }
-        const conv = conversations.find(c => c.id === currentId);
-        if (!conv) return;
-        
-        const regex = new RegExp(escapeRegex(keyword), 'gi');
-        const matches = [];
-        let globalIdx = 0;
-        for (let msgIdx = 0; msgIdx < conv.messages.length; msgIdx++) {
-            const msg = conv.messages[msgIdx];
-            const text = msg.content;
-            let match;
-            const msgMatches = [];
-            while ((match = regex.exec(text)) !== null) {
-                msgMatches.push({
-                    startIndex: match.index,
-                    endIndex: match.index + match[0].length,
-                    text: match[0],
-                    globalIdx: globalIdx++
-                });
-            }
-            if (msgMatches.length > 0) {
-                matches.push({ messageIndex: msgIdx, matches: msgMatches });
-            }
-        }
-        currentSearchMatches = matches;
-        currentMatchIdx = matches.length > 0 ? 0 : -1;
-        searchStats.innerText = `${currentSearchMatches.reduce((acc, m) => acc + m.matches.length, 0)} 个结果`;
-        renderMessagesWithHighlights();
-        if (currentMatchIdx !== -1) {
-            scrollToCurrentMatch();
-        }
-    }
-    
-    function escapeRegex(str) {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-    
-    function renderMessagesWithHighlights() {
-        let conv = conversations.find(c => c.id === currentId);
-        if (!conv) return;
-        msgContainer.innerHTML = '';
-        if (conv.messages.length === 0) {
-            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 暂无消息</div></div>`;
-        } else {
-            // 构建一个快速查找映射: 消息索引 -> 该消息内的匹配列表
-            const matchesMap = new Map();
-            for (let item of currentSearchMatches) {
-                matchesMap.set(item.messageIndex, item.matches);
-            }
-            let globalMatchCounter = 0;
-            for (let i = 0; i < conv.messages.length; i++) {
-                const msg = conv.messages[i];
-                let div = document.createElement('div');
-                div.className = `message ${msg.role}`;
-                let avatar = msg.role === 'user' ? '👤' : '🤖';
-                const msgMatches = matchesMap.get(i) || [];
-                // 为每个匹配项添加 globalIdx
-                for (let m of msgMatches) {
-                    m.globalIdx = globalMatchCounter++;
-                }
-                let formatted;
-                if (msgMatches.length > 0) {
-                    formatted = highlightText(msg.content, msgMatches, currentMatchIdx, i);
-                } else {
-                    formatted = formatLines(msg.content);
-                }
-                div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble" data-msg-idx="${i}">${formatted}</div>`;
-                const bubble = div.querySelector('.bubble');
-                if (msg.role === 'assistant' && msg.content) {
-                    let copyBtn = document.createElement('button');
-                    copyBtn.innerText = '📋 复制';
-                    copyBtn.className = 'copy-btn';
-                    copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(msg.content); };
-                    bubble.appendChild(copyBtn);
-                }
-                if (msg.role === 'user') {
-                    let actionDiv = document.createElement('div');
-                    actionDiv.className = 'message-actions';
-                    let editBtn = document.createElement('button');
-                    editBtn.innerText = '✏️ 编辑';
-                    editBtn.className = 'edit-btn';
-                    editBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        enableEditMode(bubble, msg.content, i);
-                    };
-                    let regenBtn = document.createElement('button');
-                    regenBtn.innerText = '🔄 重新生成';
-                    regenBtn.className = 'regenerate-btn';
-                    regenBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        regenerateAnswer(i);
-                    };
-                    actionDiv.appendChild(editBtn);
-                    actionDiv.appendChild(regenBtn);
-                    bubble.appendChild(actionDiv);
-                }
-                msgContainer.appendChild(div);
-            }
-        }
-        scrollToBottom();
-    }
-    
-    function renderMessages() {
-        // 如果没有搜索状态，普通渲染
-        if (currentSearchMatches.length === 0 || searchInput.value.trim() === '') {
-            let conv = conversations.find(c => c.id === currentId);
-            if (!conv) return;
-            msgContainer.innerHTML = '';
-            if (conv.messages.length === 0) {
-                msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 暂无消息</div></div>`;
-            } else {
-                for (let i = 0; i < conv.messages.length; i++) {
-                    const msg = conv.messages[i];
-                    let div = document.createElement('div');
-                    div.className = `message ${msg.role}`;
-                    let avatar = msg.role === 'user' ? '👤' : '🤖';
-                    let formatted = formatLines(msg.content);
-                    div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble" data-msg-idx="${i}">${formatted}</div>`;
-                    const bubble = div.querySelector('.bubble');
-                    if (msg.role === 'assistant' && msg.content) {
-                        let copyBtn = document.createElement('button');
-                        copyBtn.innerText = '📋 复制';
-                        copyBtn.className = 'copy-btn';
-                        copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(msg.content); };
-                        bubble.appendChild(copyBtn);
-                    }
-                    if (msg.role === 'user') {
-                        let actionDiv = document.createElement('div');
-                        actionDiv.className = 'message-actions';
-                        let editBtn = document.createElement('button');
-                        editBtn.innerText = '✏️ 编辑';
-                        editBtn.className = 'edit-btn';
-                        editBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            enableEditMode(bubble, msg.content, i);
-                        };
-                        let regenBtn = document.createElement('button');
-                        regenBtn.innerText = '🔄 重新生成';
-                        regenBtn.className = 'regenerate-btn';
-                        regenBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            regenerateAnswer(i);
-                        };
-                        actionDiv.appendChild(editBtn);
-                        actionDiv.appendChild(regenBtn);
-                        bubble.appendChild(actionDiv);
-                    }
-                    msgContainer.appendChild(div);
-                }
-            }
-            scrollToBottom();
-        } else {
-            renderMessagesWithHighlights();
-        }
-    }
-    
-    function scrollToCurrentMatch() {
-        if (currentMatchIdx < 0 || currentSearchMatches.length === 0) return;
-        // 找到当前匹配所在的消息
-        let targetMsgIdx = -1;
-        let targetMatchLocalIdx = -1;
-        let globalCounter = 0;
-        for (let item of currentSearchMatches) {
-            for (let match of item.matches) {
-                if (globalCounter === currentMatchIdx) {
-                    targetMsgIdx = item.messageIndex;
-                    targetMatchLocalIdx = match.startIndex;
-                    break;
-                }
-                globalCounter++;
-            }
-            if (targetMsgIdx !== -1) break;
-        }
-        if (targetMsgIdx === -1) return;
-        const msgElements = document.querySelectorAll('.message');
-        if (msgElements[targetMsgIdx]) {
-            msgElements[targetMsgIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        // 重新渲染以更新高亮样式
-        renderMessagesWithHighlights();
-    }
-    
-    function nextMatch() {
-        if (currentSearchMatches.length === 0) return;
-        const total = currentSearchMatches.reduce((acc, m) => acc + m.matches.length, 0);
-        currentMatchIdx = (currentMatchIdx + 1) % total;
-        scrollToCurrentMatch();
-        searchStats.innerText = `${total} 个结果 (${currentMatchIdx+1}/${total})`;
-    }
-    
-    function prevMatch() {
-        if (currentSearchMatches.length === 0) return;
-        const total = currentSearchMatches.reduce((acc, m) => acc + m.matches.length, 0);
-        currentMatchIdx = (currentMatchIdx - 1 + total) % total;
-        scrollToCurrentMatch();
-        searchStats.innerText = `${total} 个结果 (${currentMatchIdx+1}/${total})`;
     }
     
     function enableEditMode(bubbleElement, originalContent, messageIndex) {
-        if (isGenerating) { alert('请等待当前回复完成'); return; }
+        if (isGenerating) { alert('请等待回复完成'); return; }
         const textarea = document.createElement('textarea');
         textarea.value = originalContent;
         textarea.className = 'edit-textarea';
@@ -900,4 +858,67 @@
         
         saveBtn.onclick = async () => {
             const newText = textarea.value.trim();
-            if (!newText) { alert('内容
+            if (!newText) { alert('内容不能为空'); return; }
+            let conv = conversations.find(c => c.id === currentId);
+            if (conv && conv.messages[messageIndex]?.role === 'user') {
+                conv.messages[messageIndex].content = newText;
+                while (conv.messages.length > messageIndex + 1) {
+                    conv.messages.pop();
+                }
+                saveData();
+                clearSearch();
+                renderMessages();
+                if (!isGenerating) {
+                    await generateForUserIndex(messageIndex);
+                }
+            }
+        };
+        cancelBtn.onclick = () => { clearSearch(); renderMessages(); };
+    }
+    
+    async function regenerateAnswer(userMsgIndex) {
+        if (isGenerating) { alert('请等待回复完成'); return; }
+        let conv = conversations.find(c => c.id === currentId);
+        if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
+        while (conv.messages.length > userMsgIndex + 1) {
+            conv.messages.pop();
+        }
+        saveData();
+        clearSearch();
+        renderMessages();
+        await generateForUserIndex(userMsgIndex);
+    }
+    
+    async function generateForUserIndex(userMsgIndex) {
+        if (isGenerating) return;
+        let conv = conversations.find(c => c.id === currentId);
+        if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
+        
+        conv.messages.push({ role: 'assistant', content: '' });
+        saveData();
+        renderMessages();
+        
+        const assistantBubbles = document.querySelectorAll('.message.assistant .bubble');
+        let targetBubble = assistantBubbles[assistantBubbles.length - 1];
+        if (!targetBubble) return;
+        
+        let apiMessages = [{ role: 'system', content: '你是DeepSeek助手，回答时请使用换行分段让阅读更舒适。根据文件内容回答，不要展示文件原文。' }];
+        for (let i = 0; i <= userMsgIndex; i++) {
+            apiMessages.push({ role: conv.messages[i].role, content: conv.messages[i].content });
+        }
+        
+        isGenerating = true;
+        sendBtn.disabled = true;
+        
+        try {
+            let response = await fetch(DEEPSEEK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+                body: JSON.stringify({ model: MODEL, messages: apiMessages, stream: true, temperature: 0.6, max_tokens: 2048 })
+            });
+            if (!response.ok) throw new Error(`API ${response.status}`);
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullAnswer = '';
+            let buffer = '';
