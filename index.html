@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek 编辑重答版 · 流畅稳定</title>
+    <title>DeepSeek 完整文件读取版</title>
     <style>
         * {
             margin: 0;
@@ -405,7 +405,7 @@
 <div class="main">
     <div class="top-bar">
         <button class="menu-btn" id="menuToggle">☰</button>
-        <div class="logo-area">DeepSeek 编辑版</div>
+        <div class="logo-area">DeepSeek 完整文件版</div>
         <button class="nav-btn" id="scrollTopBtn" title="回到顶部">↑</button>
         <button class="nav-btn" id="scrollBottomBtn" title="跳到底部">↓</button>
     </div>
@@ -413,14 +413,14 @@
     <div class="messages-container" id="messagesContainer">
         <div class="message assistant">
             <div class="avatar">🤖</div>
-            <div class="bubble">✨ 新增「编辑重答」功能<br>• 每条用户消息旁有 ✏️ 编辑按钮，修改后可重新生成回复<br>• 生成时仍可自由滑动页面<br>• 支持文件上传，回复自动分段</div>
+            <div class="bubble">✨ 文件完整读取版<br>• 上传文件不再截断，完整发送给DeepSeek<br>• 界面只显示文件标记，不显示原文<br>• 支持大文件（会提示token消耗）</div>
         </div>
     </div>
 
     <div class="input-area">
         <div class="input-wrapper">
             <label class="file-label" title="上传文件">📎
-                <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml">
+                <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml,.pdf">
             </label>
             <textarea class="message-input" id="messageInput" placeholder="输入消息..." rows="1"></textarea>
             <button class="send-btn" id="sendBtn">➤</button>
@@ -452,7 +452,6 @@
     let pendingFile = null;
     let autoScrollEnabled = true;
     let scrollTimeout = null;
-    let currentStreamController = null;
     
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -549,7 +548,7 @@
         if (!conv) return;
         msgContainer.innerHTML = '';
         if (conv.messages.length === 0) {
-            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 点击用户消息旁的 ✏️ 可编辑并重新生成回复。</div></div>`;
+            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 上传文件后，我会完整读取内容并回答。界面只显示文件标记，不显示原文。</div></div>`;
         } else {
             for (let i = 0; i < conv.messages.length; i++) {
                 const msg = conv.messages[i];
@@ -672,7 +671,7 @@
             let response = await fetch(DEEPSEEK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-                body: JSON.stringify({ model: MODEL, messages: apiMessages, stream: true, temperature: 0.6, max_tokens: 2048 })
+                body: JSON.stringify({ model: MODEL, messages: apiMessages, stream: true, temperature: 0.6, max_tokens: 4096 })
             });
             if (!response.ok) throw new Error(`API ${response.status}`);
             
@@ -756,6 +755,38 @@
         }
     }
     
+    // ========== 修复：完整读取文件，不截断 ==========
+    function onFileSelected(file) {
+        if (!file) return;
+        // 检查文件大小（提示用，不强制限制）
+        const fileSizeKB = file.size / 1024;
+        if (fileSizeKB > 500) {
+            if (!confirm(`文件较大（${fileSizeKB.toFixed(0)} KB），可能消耗较多token。是否继续？`)) {
+                return;
+            }
+        }
+        
+        let reader = new FileReader();
+        reader.onload = (e) => {
+            let content = e.target.result;
+            // 完整保存，不截断
+            pendingFile = { name: file.name, content: content };
+            showFileBadge(file.name);
+        };
+        reader.onerror = () => alert('文件读取失败');
+        reader.readAsText(file, 'UTF-8');
+    }
+    
+    function showFileBadge(name) {
+        filePreviewArea.innerHTML = `<div class="file-preview-badge">📎 已附加: ${escapeHtml(name)} <button class="remove-file" id="clearFileBtn">✖</button></div>`;
+        document.getElementById('clearFileBtn')?.addEventListener('click', () => { pendingFile = null; filePreviewArea.innerHTML = ''; fileInput.value = ''; });
+    }
+    function clearPreview() {
+        filePreviewArea.innerHTML = '';
+        fileInput.value = '';
+    }
+    
+    // ========== 修复：发送时不截断文件内容 ==========
     async function sendMessage() {
         if (isGenerating) { alert('请等待回复完成'); return; }
         let userText = msgInput.value.trim();
@@ -765,7 +796,8 @@
         let fileContentForApi = '';
         if (pendingFile) {
             finalDisplayText = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
-            fileContentForApi = `\n\n===== 上传文件 "${pendingFile.name}" 内容 =====\n${pendingFile.content.slice(0, 5000)}\n===== 文件内容结束 =====\n请根据文件内容回答。`;
+            // 完整内容，不截断
+            fileContentForApi = `\n\n===== 上传文件 "${pendingFile.name}" 完整内容 =====\n${pendingFile.content}\n===== 文件内容结束 =====\n请根据文件内容回答问题。`;
             pendingFile = null;
             clearPreview();
         }
@@ -782,7 +814,6 @@
         msgInput.value = '';
         msgInput.style.height = 'auto';
         
-        // 临时替换API用的内容
         let originalContent = conv.messages[userMsgIndex].content;
         conv.messages[userMsgIndex].content = finalContentForApi;
         await generateForUserIndex(userMsgIndex);
@@ -795,28 +826,6 @@
             saveData();
             renderSidebar();
         }
-    }
-    
-    function onFileSelected(file) {
-        if (!file) return;
-        let reader = new FileReader();
-        reader.onload = (e) => {
-            let content = e.target.result;
-            if (content.length > 8000) content = content.slice(0, 8000) + '\n...(截断)';
-            pendingFile = { name: file.name, content: content };
-            showFileBadge(file.name);
-        };
-        reader.onerror = () => alert('读取失败');
-        reader.readAsText(file, 'UTF-8');
-    }
-    
-    function showFileBadge(name) {
-        filePreviewArea.innerHTML = `<div class="file-preview-badge">📎 已附加: ${escapeHtml(name)} <button class="remove-file" id="clearFileBtn">✖</button></div>`;
-        document.getElementById('clearFileBtn')?.addEventListener('click', () => { pendingFile = null; filePreviewArea.innerHTML = ''; fileInput.value = ''; });
-    }
-    function clearPreview() {
-        filePreviewArea.innerHTML = '';
-        fileInput.value = '';
     }
     
     function scrollToTop() { 
@@ -866,9 +875,4 @@
     
     loadData();
     renderSidebar();
-    renderMessages();
-    autoResize();
-    if (!API_KEY) setTimeout(() => alert('⚠️ 未设置 API Key，请刷新页面输入'), 300);
-</script>
-</body>
-</html>
+   
