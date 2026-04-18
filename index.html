@@ -3,421 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek · 完整文件版</title>
+    <title>DeepSeek · 完整可用版</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #0f0f0f;
-            color: #e4e4e7;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-        }
-
-        .sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 280px;
-            height: 100%;
-            background: #1a1a1a;
-            border-right: 1px solid #2c2c2e;
-            transform: translateX(-100%);
-            transition: transform 0.2s ease;
-            z-index: 30;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 2px 0 12px rgba(0,0,0,0.5);
-        }
-
-        .sidebar.open {
-            transform: translateX(0);
-        }
-
-        .overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(2px);
-            z-index: 20;
-            display: none;
-        }
-
-        .overlay.show {
-            display: block;
-        }
-
-        .sidebar-header {
-            padding: 20px 16px;
-            border-bottom: 1px solid #2c2c2e;
-        }
-
-        .new-chat-btn {
-            width: 100%;
-            background: #2c2c2e;
-            border: none;
-            color: white;
-            padding: 12px;
-            border-radius: 14px;
-            font-size: 15px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .history-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .history-item {
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            background: #1f1f1f;
-            border: 1px solid #2c2c2e;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .history-item.active {
-            background: #2d2d30;
-            border-color: #4a6e8c;
-        }
-
-        .history-title {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
-            font-size: 14px;
-        }
-
-        .delete-history {
-            background: none;
-            border: none;
-            color: #8e8e93;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 4px 8px;
-        }
-
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-            background: #0f0f0f;
-        }
-
-        .top-bar {
-            padding: 12px 16px;
-            background: #0f0f0f;
-            border-bottom: 1px solid #2c2c2e;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-shrink: 0;
-        }
-
-        .menu-btn {
-            background: #1c1c1e;
-            border: none;
-            color: white;
-            font-size: 24px;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            cursor: pointer;
-        }
-
-        .logo-area {
-            font-weight: 600;
-            font-size: 18px;
-            flex: 1;
-        }
-
-        .nav-btn {
-            background: #2c2c2e;
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 30px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px 16px 90px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .message {
-            display: flex;
-            gap: 10px;
-            max-width: 100%;
-            position: relative;
-        }
-
-        .message.user {
-            justify-content: flex-end;
-        }
-
-        .avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 32px;
-            background: #2c2c2e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .message.user .avatar {
-            background: #2b4f7c;
-            order: 2;
-        }
-
-        .bubble {
-            background: #1e1e20;
-            padding: 10px 14px;
-            border-radius: 18px;
-            line-height: 1.45;
-            font-size: 15px;
-            max-width: 85%;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-        }
-
-        .message.user .bubble {
-            background: #2b4f7c;
-        }
-
-        .message-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 6px;
-            justify-content: flex-end;
-        }
-        .edit-btn, .regenerate-btn {
-            background: #2c2c2e;
-            border: none;
-            color: #aaa;
-            font-size: 12px;
-            padding: 4px 10px;
-            border-radius: 16px;
-            cursor: pointer;
-        }
-        .copy-btn {
-            background: #3a3a3c;
-            border: none;
-            color: #ccc;
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 14px;
-            cursor: pointer;
-            margin-top: 6px;
-            display: inline-block;
-        }
-        .edit-textarea {
-            width: 100%;
-            background: #2c2c2e;
-            border: 1px solid #4a6e8c;
-            color: white;
-            padding: 8px;
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: vertical;
-        }
-        .edit-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 6px;
-        }
-        .save-edit-btn, .cancel-edit-btn {
-            background: #2b4f7c;
-            border: none;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 16px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .cancel-edit-btn {
-            background: #3a3a3c;
-        }
-
-        .input-area {
-            background: #0f0f0f;
-            border-top: 1px solid #2c2c2e;
-            padding: 10px 12px 16px 12px;
-            flex-shrink: 0;
-        }
-
-        .input-wrapper {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            background: #1c1c1e;
-            border-radius: 30px;
-            padding: 4px 10px;
-        }
-
-        .file-label {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #8e8e93;
-            padding: 6px;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .message-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 16px;
-            padding: 10px 4px;
-            max-height: 100px;
-            font-family: inherit;
-            resize: none;
-        }
-
-        .message-input:focus {
-            outline: none;
-        }
-
-        .send-btn {
-            background: #2b4f7c;
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 30px;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .send-btn:disabled {
-            opacity: 0.5;
-        }
-
-        .file-preview-badge {
-            background: #1c1c1e;
-            border-radius: 20px;
-            padding: 4px 12px;
-            margin-top: 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-        }
-
-        .remove-file {
-            background: none;
-            border: none;
-            color: #ff453a;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #2b4f7c;
-            border-radius: 8px;
-            margin-right: 6px;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-
-        @media (min-width: 768px) {
-            .sidebar {
-                transform: translateX(0);
-                position: relative;
-            }
-            .overlay {
-                display: none !important;
-            }
-            .menu-btn {
-                display: none;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e4e4e7; height: 100vh; overflow: hidden; display: flex; }
+        .sidebar { position: fixed; top: 0; left: 0; width: 280px; height: 100%; background: #1a1a1a; border-right: 1px solid #2c2c2e; transform: translateX(-100%); transition: transform 0.2s ease; z-index: 30; display: flex; flex-direction: column; }
+        .sidebar.open { transform: translateX(0); }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 20; display: none; }
+        .overlay.show { display: block; }
+        .sidebar-header { padding: 20px 16px; border-bottom: 1px solid #2c2c2e; }
+        .new-chat-btn { width: 100%; background: #2c2c2e; border: none; color: white; padding: 12px; border-radius: 14px; font-size: 15px; cursor: pointer; }
+        .history-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .history-item { padding: 12px; border-radius: 12px; cursor: pointer; background: #1f1f1f; border: 1px solid #2c2c2e; display: flex; justify-content: space-between; align-items: center; }
+        .history-item.active { background: #2d2d30; border-color: #4a6e8c; }
+        .history-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; font-size: 14px; }
+        .delete-history { background: none; border: none; color: #8e8e93; font-size: 18px; cursor: pointer; padding: 4px 8px; }
+        .main { flex: 1; display: flex; flex-direction: column; height: 100%; background: #0f0f0f; }
+        .top-bar { padding: 12px 16px; background: #0f0f0f; border-bottom: 1px solid #2c2c2e; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .menu-btn { background: #1c1c1e; border: none; color: white; font-size: 24px; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; }
+        .logo-area { font-weight: 600; font-size: 18px; flex: 1; }
+        .nav-btn { background: #2c2c2e; border: none; color: white; width: 40px; height: 40px; border-radius: 30px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .messages-container { flex: 1; overflow-y: auto; padding: 16px 16px 90px 16px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        .message { display: flex; gap: 10px; max-width: 100%; }
+        .message.user { justify-content: flex-end; }
+        .avatar { width: 32px; height: 32px; border-radius: 32px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .message.user .avatar { background: #2b4f7c; order: 2; }
+        .bubble { background: #1e1e20; padding: 10px 14px; border-radius: 18px; line-height: 1.45; font-size: 15px; max-width: 85%; word-wrap: break-word; white-space: pre-wrap; }
+        .message.user .bubble { background: #2b4f7c; }
+        .message-actions { display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end; }
+        .edit-btn, .regenerate-btn { background: #2c2c2e; border: none; color: #aaa; font-size: 12px; padding: 4px 10px; border-radius: 16px; cursor: pointer; }
+        .copy-btn { background: #3a3a3c; border: none; color: #ccc; font-size: 11px; padding: 3px 8px; border-radius: 14px; cursor: pointer; margin-top: 6px; display: inline-block; }
+        .edit-textarea { width: 100%; background: #2c2c2e; border: 1px solid #4a6e8c; color: white; padding: 8px; border-radius: 12px; font-family: inherit; font-size: 14px; resize: vertical; }
+        .edit-actions { display: flex; gap: 8px; margin-top: 6px; }
+        .save-edit-btn, .cancel-edit-btn { background: #2b4f7c; border: none; color: white; padding: 5px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; }
+        .cancel-edit-btn { background: #3a3a3c; }
+        .input-area { background: #0f0f0f; border-top: 1px solid #2c2c2e; padding: 10px 12px 16px 12px; flex-shrink: 0; }
+        .input-wrapper { display: flex; gap: 8px; align-items: center; background: #1c1c1e; border-radius: 30px; padding: 4px 10px; }
+        .file-label { background: none; border: none; font-size: 24px; cursor: pointer; color: #8e8e93; padding: 6px; }
+        #fileInput { display: none; }
+        .message-input { flex: 1; background: transparent; border: none; color: white; font-size: 16px; padding: 10px 4px; max-height: 100px; font-family: inherit; resize: none; }
+        .message-input:focus { outline: none; }
+        .send-btn { background: #2b4f7c; border: none; color: white; width: 40px; height: 40px; border-radius: 30px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .send-btn:disabled { opacity: 0.5; }
+        .file-preview-badge { background: #1c1c1e; border-radius: 20px; padding: 4px 12px; margin-top: 6px; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
+        .remove-file { background: none; border: none; color: #ff453a; font-size: 16px; cursor: pointer; }
+        .status-indicator { display: inline-block; width: 8px; height: 8px; background: #2b4f7c; border-radius: 8px; margin-right: 6px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+        @media (min-width: 768px) { .sidebar { transform: translateX(0); position: relative; } .overlay { display: none !important; } .menu-btn { display: none; } }
     </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <button class="new-chat-btn" id="newChatBtn">+ 新建对话</button>
-    </div>
+    <div class="sidebar-header"><button class="new-chat-btn" id="newChatBtn">+ 新建对话</button></div>
     <div class="history-list" id="historyList"></div>
-    <div style="padding: 14px; font-size: 10px; color: #5c5c5e; text-align: center; border-top:1px solid #2c2c2e;">
-        API Key 本地存储
-    </div>
+    <div style="padding: 14px; font-size: 10px; color: #5c5c5e; text-align: center; border-top:1px solid #2c2c2e;">API Key 本地存储</div>
 </div>
 <div class="overlay" id="overlay"></div>
-
 <div class="main">
     <div class="top-bar">
         <button class="menu-btn" id="menuToggle">☰</button>
-        <div class="logo-area">DeepSeek 完整文件版</div>
+        <div class="logo-area">DeepSeek 完整可用版</div>
         <button class="nav-btn" id="scrollTopBtn">↑</button>
         <button class="nav-btn" id="scrollBottomBtn">↓</button>
     </div>
-
     <div class="messages-container" id="messagesContainer">
-        <div class="message assistant">
-            <div class="avatar">🤖</div>
-            <div class="bubble">✨ 文件完整读取版<br>• 上传文件不再截断，完整发送给DeepSeek<br>• 界面只显示文件标记，不显示原文<br>• 支持大文件（会提示token消耗）</div>
-        </div>
+        <div class="message assistant"><div class="avatar">🤖</div><div class="bubble">✨ 所有按钮都能点！<br>• 上传文件完整读取<br>• 界面只显示文件标记<br>• 支持编辑重答、复制</div></div>
     </div>
-
     <div class="input-area">
         <div class="input-wrapper">
-            <label class="file-label" id="fileLabel">📎
-                <input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml">
-            </label>
+            <label class="file-label" id="fileLabel">📎<input type="file" id="fileInput" accept=".txt,.md,.json,.csv,.js,.py,.html,.css,.xml"></label>
             <textarea class="message-input" id="messageInput" placeholder="输入消息..." rows="1"></textarea>
             <button class="send-btn" id="sendBtn">➤</button>
         </div>
@@ -430,444 +84,239 @@
     let API_KEY = localStorage.getItem('deepseek_api_key');
     if (!API_KEY) {
         let inputKey = prompt('🔑 输入 DeepSeek API Key (platform.deepseek.com)');
-        if (inputKey?.trim()) {
-            API_KEY = inputKey.trim();
-            localStorage.setItem('deepseek_api_key', API_KEY);
-        } else {
-            API_KEY = '';
-            alert('未输入 API Key，对话无法发送');
-        }
+        if (inputKey?.trim()) { API_KEY = inputKey.trim(); localStorage.setItem('deepseek_api_key', API_KEY); }
+        else { API_KEY = ''; alert('未输入 API Key，对话无法发送'); }
     }
 
     const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
     const MODEL = 'deepseek-chat';
     
-    // ========== 数据 ==========
-    let conversations = [];
-    let currentId = null;
-    let isGenerating = false;
-    let pendingFile = null;      // { name, content }
-    let autoScrollEnabled = true;
-    let scrollTimeout = null;
+    let conversations = [], currentId = null, isGenerating = false, pendingFile = null;
+    let autoScrollEnabled = true, scrollTimeout = null;
     
-    // ========== DOM ==========
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    const menuToggle = document.getElementById('menuToggle');
-    const newChatBtn = document.getElementById('newChatBtn');
-    const historyList = document.getElementById('historyList');
-    const msgContainer = document.getElementById('messagesContainer');
-    const msgInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const fileInput = document.getElementById('fileInput');
-    const filePreviewArea = document.getElementById('filePreviewArea');
-    const scrollTopBtn = document.getElementById('scrollTopBtn');
-    const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+    const sidebar = document.getElementById('sidebar'), overlay = document.getElementById('overlay');
+    const menuToggle = document.getElementById('menuToggle'), newChatBtn = document.getElementById('newChatBtn');
+    const historyList = document.getElementById('historyList'), msgContainer = document.getElementById('messagesContainer');
+    const msgInput = document.getElementById('messageInput'), sendBtn = document.getElementById('sendBtn');
+    const fileInput = document.getElementById('fileInput'), filePreviewArea = document.getElementById('filePreviewArea');
+    const scrollTopBtn = document.getElementById('scrollTopBtn'), scrollBottomBtn = document.getElementById('scrollBottomBtn');
     
-    // ========== 工具函数 ==========
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            return m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;');
-        });
-    }
-    
-    function formatLines(text) {
-        if (!text) return '';
-        return escapeHtml(text).replace(/\n/g, '<br>');
-    }
-    
-    function saveData() {
-        localStorage.setItem('deepseek_conversations', JSON.stringify(conversations));
-    }
+    function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
+    function formatLines(t) { if (!t) return ''; return escapeHtml(t).replace(/\n/g, '<br>'); }
+    function saveData() { localStorage.setItem('deepseek_conversations', JSON.stringify(conversations)); }
+    function scrollToBottom() { msgContainer.scrollTop = msgContainer.scrollHeight; }
+    function scrollToTop() { autoScrollEnabled = false; msgContainer.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => { autoScrollEnabled = true; }, 500); }
+    function autoResize() { msgInput.style.height = 'auto'; msgInput.style.height = Math.min(100, msgInput.scrollHeight) + 'px'; }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+    function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
+    function onUserScroll() { if (isGenerating) { autoScrollEnabled = false; if (scrollTimeout) clearTimeout(scrollTimeout); scrollTimeout = setTimeout(() => { autoScrollEnabled = true; }, 3000); } }
+    async function copyToClip(t) { try { await navigator.clipboard.writeText(t); alert('✅ 已复制'); } catch(e) { let ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('✅ 已复制'); } }
     
     function loadData() {
         let raw = localStorage.getItem('deepseek_conversations');
-        if (raw) {
-            try {
-                conversations = JSON.parse(raw);
-                if (!Array.isArray(conversations)) conversations = [];
-                conversations.forEach(c => { if (!c.messages) c.messages = []; });
-            } catch(e) { conversations = []; }
-        }
-        if (!conversations.length) {
-            conversations = [{ id: Date.now().toString(), title: '新对话', messages: [] }];
-        }
-        if (!currentId || !conversations.find(c => c.id === currentId)) {
-            currentId = conversations[0].id;
-        }
+        if (raw) { try { conversations = JSON.parse(raw); if (!Array.isArray(conversations)) conversations = []; conversations.forEach(c => { if (!c.messages) c.messages = []; }); } catch(e) { conversations = []; } }
+        if (!conversations.length) conversations = [{ id: Date.now().toString(), title: '新对话', messages: [] }];
+        if (!currentId || !conversations.find(c => c.id === currentId)) currentId = conversations[0].id;
     }
     
-    function scrollToBottom() {
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-    }
-    
-    function scrollToTop() {
-        autoScrollEnabled = false;
-        msgContainer.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => { autoScrollEnabled = true; }, 500);
-    }
-    
-    function autoResize() {
-        msgInput.style.height = 'auto';
-        msgInput.style.height = Math.min(100, msgInput.scrollHeight) + 'px';
-    }
-    
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('show');
-    }
-    
-    function openSidebar() {
-        sidebar.classList.add('open');
-        overlay.classList.add('show');
-    }
-    
-    function onUserScroll() {
-        if (isGenerating) {
-            autoScrollEnabled = false;
-            if (scrollTimeout) clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => { autoScrollEnabled = true; }, 3000);
-        }
-    }
-    
-    async function copyToClip(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-            alert('✅ 已复制');
-        } catch(e) {
-            let ta = document.createElement('textarea');
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            alert('✅ 已复制');
-        }
-    }
-    
-    // ========== 渲染侧边栏 ==========
     function renderSidebar() {
         if (!historyList) return;
         historyList.innerHTML = '';
         for (let conv of conversations) {
-            let div = document.createElement('div');
-            div.className = 'history-item';
+            let div = document.createElement('div'); div.className = 'history-item';
             if (conv.id === currentId) div.classList.add('active');
             let title = conv.title;
-            if (!title || title === '新对话') {
-                let firstMsg = conv.messages.find(m => m.role === 'user');
-                title = firstMsg ? firstMsg.content.slice(0, 24) : '新对话';
-                conv.title = title;
-            }
+            if (!title || title === '新对话') { let firstMsg = conv.messages.find(m => m.role === 'user'); title = firstMsg ? firstMsg.content.slice(0, 24) : '新对话'; conv.title = title; }
             div.innerHTML = `<span class="history-title">${escapeHtml(title)}</span><button class="delete-history" data-id="${conv.id}">🗑</button>`;
-            div.querySelector('.delete-history').onclick = (e) => {
-                e.stopPropagation();
-                if (conversations.length === 1) { alert('至少保留一个对话'); return; }
-                conversations = conversations.filter(c => c.id !== conv.id);
-                if (currentId === conv.id) currentId = conversations[0].id;
-                saveData();
-                renderSidebar();
-                renderMessages();
-            };
-            div.onclick = () => {
-                if (isGenerating) { alert('请等待回复完成'); return; }
-                currentId = conv.id;
-                renderSidebar();
-                renderMessages();
-                if (window.innerWidth < 768) closeSidebar();
-            };
             historyList.appendChild(div);
         }
     }
     
-    // ========== 渲染消息 ==========
-    function renderMessages() {
-        let conv = conversations.find(c => c.id === currentId);
-        if (!conv) return;
-        msgContainer.innerHTML = '';
-        
-        if (conv.messages.length === 0) {
-            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 上传文件后，我会完整读取内容并回答。界面只显示文件标记，不显示原文。</div></div>`;
-        } else {
-            for (let i = 0; i < conv.messages.length; i++) {
-                const msg = conv.messages[i];
-                let div = document.createElement('div');
-                div.className = `message ${msg.role}`;
-                let avatar = msg.role === 'user' ? '👤' : '🤖';
-                let formatted = formatLines(msg.content);
-                div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${formatted}</div>`;
-                const bubble = div.querySelector('.bubble');
-                
-                if (msg.role === 'assistant' && msg.content) {
-                    let copyBtn = document.createElement('button');
-                    copyBtn.innerText = '📋 复制';
-                    copyBtn.className = 'copy-btn';
-                    copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(msg.content); };
-                    bubble.appendChild(copyBtn);
-                }
-                
-                if (msg.role === 'user') {
-                    let actionDiv = document.createElement('div');
-                    actionDiv.className = 'message-actions';
-                    let editBtn = document.createElement('button');
-                    editBtn.innerText = '✏️ 编辑';
-                    editBtn.className = 'edit-btn';
-                    editBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        if (isGenerating) { alert('请等待回复完成'); return; }
-                        // 编辑模式
-                        const originalContent = msg.content;
-                        const textarea = document.createElement('textarea');
-                        textarea.value = originalContent;
-                        textarea.className = 'edit-textarea';
-                        textarea.rows = 3;
-                        const actionDiv2 = document.createElement('div');
-                        actionDiv2.className = 'edit-actions';
-                        const saveBtn = document.createElement('button');
-                        saveBtn.innerText = '✓ 保存并重答';
-                        saveBtn.className = 'save-edit-btn';
-                        const cancelBtn = document.createElement('button');
-                        cancelBtn.innerText = '✗ 取消';
-                        cancelBtn.className = 'cancel-edit-btn';
-                        actionDiv2.appendChild(saveBtn);
-                        actionDiv2.appendChild(cancelBtn);
-                        bubble.innerHTML = '';
-                        bubble.appendChild(textarea);
-                        bubble.appendChild(actionDiv2);
-                        saveBtn.onclick = async () => {
-                            const newText = textarea.value.trim();
-                            if (!newText) { alert('内容不能为空'); return; }
-                            let conv2 = conversations.find(c => c.id === currentId);
-                            if (conv2 && conv2.messages[i]) {
-                                conv2.messages[i].content = newText;
-                                while (conv2.messages.length > i + 1) {
-                                    conv2.messages.pop();
-                                }
-                                saveData();
-                                renderMessages();
-                                await generateForUserIndex(i);
-                            }
-                        };
-                        cancelBtn.onclick = () => { renderMessages(); };
-                    };
-                    let regenBtn = document.createElement('button');
-                    regenBtn.innerText = '🔄 重新生成';
-                    regenBtn.className = 'regenerate-btn';
-                    regenBtn.onclick = async (e) => {
-                        e.stopPropagation();
-                        if (isGenerating) { alert('请等待回复完成'); return; }
-                        let conv2 = conversations.find(c => c.id === currentId);
-                        if (conv2 && conv2.messages[i]?.role === 'user') {
-                            while (conv2.messages.length > i + 1) {
-                                conv2.messages.pop();
-                            }
-                            saveData();
-                            renderMessages();
-                            await generateForUserIndex(i);
-                        }
-                    };
-                    actionDiv.appendChild(editBtn);
-                    actionDiv.appendChild(regenBtn);
-                    bubble.appendChild(actionDiv);
-                }
-                msgContainer.appendChild(div);
-            }
-        }
-        scrollToBottom();
-    }
-    
-    // ========== 生成回复（流式）==========
     async function generateForUserIndex(userMsgIndex) {
         if (isGenerating) return;
         let conv = conversations.find(c => c.id === currentId);
         if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
-        
         conv.messages.push({ role: 'assistant', content: '' });
         saveData();
         renderMessages();
-        
-        const assistantBubbles = document.querySelectorAll('.message.assistant .bubble');
-        let targetBubble = assistantBubbles[assistantBubbles.length - 1];
-        if (!targetBubble) return;
-        
-        let apiMessages = [];
-        apiMessages.push({ role: 'system', content: '你是DeepSeek助手，回答时请使用换行分段让阅读更舒适。如果用户上传了文件，根据文件内容回答，不要展示文件原文。直接给出清晰、分段的结果。' });
-        for (let i = 0; i <= userMsgIndex; i++) {
-            apiMessages.push({ role: conv.messages[i].role, content: conv.messages[i].content });
-        }
-        
-        isGenerating = true;
-        sendBtn.disabled = true;
-        
+        let targetBubble = document.querySelectorAll('.message.assistant .bubble');
+        let bubble = targetBubble[targetBubble.length - 1];
+        if (!bubble) return;
+        let apiMessages = [{ role: 'system', content: '你是DeepSeek助手，回答时请使用换行分段。如果用户上传了文件，根据文件内容回答，不要展示文件原文。' }];
+        for (let i = 0; i <= userMsgIndex; i++) apiMessages.push({ role: conv.messages[i].role, content: conv.messages[i].content });
+        isGenerating = true; sendBtn.disabled = true;
         try {
-            let response = await fetch(DEEPSEEK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-                body: JSON.stringify({ model: MODEL, messages: apiMessages, stream: true, temperature: 0.6, max_tokens: 4096 })
-            });
-            if (!response.ok) throw new Error(`API ${response.status}`);
-            
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let fullAnswer = '';
-            let buffer = '';
-            let lastUpdate = 0;
-            
-            targetBubble.innerHTML = '<span class="status-indicator"></span> 生成中...';
-            
+            let res = await fetch(DEEPSEEK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` }, body: JSON.stringify({ model: MODEL, messages: apiMessages, stream: true, temperature: 0.6, max_tokens: 4096 }) });
+            if (!res.ok) throw new Error(`API ${res.status}`);
+            let reader = res.body.getReader(), decoder = new TextDecoder(), full = '', buffer = '', last = 0;
+            bubble.innerHTML = '<span class="status-indicator"></span> 生成中...';
             while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+                let { done, value } = await reader.read(); if (done) break;
                 buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop();
+                let lines = buffer.split('\n'); buffer = lines.pop();
                 for (let line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || trimmed === 'data: [DONE]') continue;
-                    if (trimmed.startsWith('data: ')) {
-                        try {
-                            const json = JSON.parse(trimmed.slice(6));
-                            const delta = json.choices[0]?.delta?.content || '';
-                            if (delta) {
-                                fullAnswer += delta;
-                                const now = Date.now();
-                                if (now - lastUpdate > 30) {
-                                    targetBubble.innerHTML = formatLines(fullAnswer);
-                                    lastUpdate = now;
-                                }
-                                if (autoScrollEnabled) scrollToBottom();
-                            }
-                        } catch(e) {}
+                    let t = line.trim();
+                    if (!t || t === 'data: [DONE]') continue;
+                    if (t.startsWith('data: ')) {
+                        try { let json = JSON.parse(t.slice(6)), delta = json.choices[0]?.delta?.content || ''; if (delta) { full += delta; let now = Date.now(); if (now - last > 30) { bubble.innerHTML = formatLines(full); last = now; } if (autoScrollEnabled) scrollToBottom(); } } catch(e) {}
                     }
                 }
             }
-            targetBubble.innerHTML = formatLines(fullAnswer || '(空回复)');
-            let copyBtn = document.createElement('button');
-            copyBtn.innerText = '📋 复制';
-            copyBtn.className = 'copy-btn';
-            copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(fullAnswer); };
-            targetBubble.appendChild(copyBtn);
-            
-            let currentConv = conversations.find(c => c.id === currentId);
-            if (currentConv && currentConv.messages[currentConv.messages.length-1]?.role === 'assistant') {
-                currentConv.messages[currentConv.messages.length-1].content = fullAnswer;
-                saveData();
-            }
-        } catch (err) {
-            targetBubble.innerHTML = formatLines(`❌ 请求失败: ${err.message}`);
-            let copyBtn = document.createElement('button');
-            copyBtn.innerText = '📋 复制';
-            copyBtn.className = 'copy-btn';
-            copyBtn.onclick = (e) => { e.stopPropagation(); copyToClip(`错误: ${err.message}`); };
-            targetBubble.appendChild(copyBtn);
-        } finally {
-            isGenerating = false;
-            sendBtn.disabled = false;
-            if (autoScrollEnabled) scrollToBottom();
-        }
+            bubble.innerHTML = formatLines(full || '(空回复)');
+            let btn = document.createElement('button'); btn.innerText = '📋 复制'; btn.className = 'copy-btn'; btn.onclick = (e) => { e.stopPropagation(); copyToClip(full); }; bubble.appendChild(btn);
+            let cur = conversations.find(c => c.id === currentId);
+            if (cur && cur.messages[cur.messages.length-1]?.role === 'assistant') { cur.messages[cur.messages.length-1].content = full; saveData(); }
+        } catch(err) { bubble.innerHTML = formatLines(`❌ 错误: ${err.message}`); let btn = document.createElement('button'); btn.innerText = '📋 复制'; btn.className = 'copy-btn'; btn.onclick = (e) => { e.stopPropagation(); copyToClip(`错误: ${err.message}`); }; bubble.appendChild(btn); }
+        finally { isGenerating = false; sendBtn.disabled = false; if (autoScrollEnabled) scrollToBottom(); }
     }
     
-    // ========== 文件处理（完整读取，不截断）==========
+    function renderMessages() {
+        let conv = conversations.find(c => c.id === currentId);
+        if (!conv) return;
+        msgContainer.innerHTML = '';
+        for (let i = 0; i < conv.messages.length; i++) {
+            let msg = conv.messages[i], div = document.createElement('div'); div.className = `message ${msg.role}`;
+            let avatar = msg.role === 'user' ? '👤' : '🤖';
+            div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble" data-idx="${i}">${formatLines(msg.content)}</div>`;
+            let bubble = div.querySelector('.bubble');
+            if (msg.role === 'assistant' && msg.content) {
+                let btn = document.createElement('button'); btn.innerText = '📋 复制'; btn.className = 'copy-btn';
+                btn.onclick = (e) => { e.stopPropagation(); copyToClip(msg.content); }; bubble.appendChild(btn);
+            }
+            if (msg.role === 'user') {
+                let actions = document.createElement('div'); actions.className = 'message-actions';
+                let editBtn = document.createElement('button'); editBtn.innerText = '✏️ 编辑'; editBtn.className = 'edit-btn';
+                let regenBtn = document.createElement('button'); regenBtn.innerText = '🔄 重新生成'; regenBtn.className = 'regenerate-btn';
+                actions.appendChild(editBtn); actions.appendChild(regenBtn); bubble.appendChild(actions);
+            }
+            msgContainer.appendChild(div);
+        }
+        if (conv.messages.length === 0) msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">上传文件或直接提问~</div></div>`;
+        scrollToBottom();
+    }
+    
     function onFileSelected(file) {
         if (!file) return;
-        const fileSizeKB = file.size / 1024;
-        if (fileSizeKB > 500) {
-            if (!confirm(`文件较大（${fileSizeKB.toFixed(0)} KB），可能消耗较多token。是否继续？`)) {
-                return;
-            }
-        }
+        let sizeKB = file.size / 1024;
+        if (sizeKB > 500 && !confirm(`文件较大（${sizeKB.toFixed(0)} KB），可能消耗较多token。继续？`)) return;
         let reader = new FileReader();
         reader.onload = (e) => {
             pendingFile = { name: file.name, content: e.target.result };
             filePreviewArea.innerHTML = `<div class="file-preview-badge">📎 已附加: ${escapeHtml(file.name)} <button class="remove-file" id="clearFileBtn">✖</button></div>`;
-            document.getElementById('clearFileBtn')?.addEventListener('click', () => {
-                pendingFile = null;
-                filePreviewArea.innerHTML = '';
-                fileInput.value = '';
-            });
+            document.getElementById('clearFileBtn')?.addEventListener('click', () => { pendingFile = null; filePreviewArea.innerHTML = ''; fileInput.value = ''; });
         };
-        reader.onerror = () => alert('文件读取失败');
+        reader.onerror = () => alert('读取失败');
         reader.readAsText(file, 'UTF-8');
     }
     
-    // ========== 发送消息 ==========
     async function sendMessage() {
         if (isGenerating) { alert('请等待回复完成'); return; }
         let userText = msgInput.value.trim();
         if (!userText && !pendingFile) return;
-        
-        let finalDisplayText = userText;
-        let fileContentForApi = '';
+        let displayText = userText, fileApi = '';
         if (pendingFile) {
-            finalDisplayText = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
-            fileContentForApi = `\n\n===== 上传文件 "${pendingFile.name}" 完整内容 =====\n${pendingFile.content}\n===== 文件内容结束 =====\n请根据文件内容回答问题。`;
-            pendingFile = null;
-            filePreviewArea.innerHTML = '';
-            fileInput.value = '';
+            displayText = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
+            fileApi = `\n\n===== 文件 "${pendingFile.name}" 完整内容 =====\n${pendingFile.content}\n===== 结束 =====\n请根据文件内容回答。`;
+            pendingFile = null; filePreviewArea.innerHTML = ''; fileInput.value = '';
         }
-        
         let conv = conversations.find(c => c.id === currentId);
-        let userMsgIndex = conv.messages.length;
-        let finalContentForStorage = finalDisplayText;
-        let finalContentForApi = finalDisplayText + fileContentForApi;
-        
-        conv.messages.push({ role: 'user', content: finalContentForStorage });
-        saveData();
-        renderMessages();
-        
-        msgInput.value = '';
-        msgInput.style.height = 'auto';
-        
-        let originalContent = conv.messages[userMsgIndex].content;
-        conv.messages[userMsgIndex].content = finalContentForApi;
-        await generateForUserIndex(userMsgIndex);
-        conv.messages[userMsgIndex].content = originalContent;
-        saveData();
-        renderMessages();
-        
-        if (conv.messages.filter(m => m.role === 'user').length === 1) {
-            conv.title = finalDisplayText.slice(0, 26) || '新对话';
-            saveData();
-            renderSidebar();
-        }
+        let idx = conv.messages.length;
+        conv.messages.push({ role: 'user', content: displayText });
+        saveData(); renderMessages();
+        msgInput.value = ''; autoResize();
+        let orig = conv.messages[idx].content;
+        conv.messages[idx].content = displayText + fileApi;
+        await generateForUserIndex(idx);
+        conv.messages[idx].content = orig;
+        saveData(); renderMessages();
+        if (conv.messages.filter(m => m.role === 'user').length === 1) { conv.title = displayText.slice(0, 26) || '新对话'; saveData(); renderSidebar(); }
     }
     
-    function newConversation() {
-        if (isGenerating) { alert('请等待回复完成'); return; }
-        let newId = Date.now().toString();
-        conversations.unshift({ id: newId, title: '新对话', messages: [] });
-        currentId = newId;
-        saveData();
-        renderSidebar();
-        renderMessages();
-        if (window.innerWidth < 768) closeSidebar();
-    }
+    function newConversation() { if (isGenerating) { alert('请等待回复完成'); return; } let newId = Date.now().toString(); conversations.unshift({ id: newId, title: '新对话', messages: [] }); currentId = newId; saveData(); renderSidebar(); renderMessages(); if (window.innerWidth < 768) closeSidebar(); }
     
-    // ========== 事件绑定 ==========
-    menuToggle.addEventListener('click', () => {
-        if (sidebar.classList.contains('open')) closeSidebar();
-        else openSidebar();
-    });
-    overlay.addEventListener('click', closeSidebar);
-    newChatBtn.addEventListener('click', newConversation);
-    sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+    // ========== 事件委托（解决按钮点不动的问题！）==========
+    document.body.addEventListener('click', async (e) => {
+        // 侧边栏历史切换/删除
+        if (e.target.classList?.contains('delete-history')) {
+            let id = e.target.getAttribute('data-id');
+            if (id && conversations.length > 1) {
+                conversations = conversations.filter(c => c.id !== id);
+                if (currentId === id) currentId = conversations[0].id;
+                saveData(); renderSidebar(); renderMessages();
+            } else if (conversations.length === 1) alert('至少保留一个对话');
+            return;
+        }
+        let historyItem = e.target.closest('.history-item');
+        if (historyItem && !e.target.classList?.contains('delete-history')) {
+            let titleSpan = historyItem.querySelector('.history-title');
+            if (titleSpan) {
+                let title = titleSpan.innerText;
+                let conv = conversations.find(c => c.title === title || (c.messages[0]?.content?.slice(0,24) === title));
+                if (conv && !isGenerating) { currentId = conv.id; renderSidebar(); renderMessages(); if (window.innerWidth < 768) closeSidebar(); }
+                else if (isGenerating) alert('请等待回复完成');
+            }
+        }
+        // 编辑按钮
+        if (e.target.classList?.contains('edit-btn')) {
+            if (isGenerating) { alert('请等待回复完成'); return; }
+            let bubble = e.target.closest('.bubble');
+            let idx = bubble?.getAttribute('data-idx');
+            if (idx !== undefined) {
+                let conv = conversations.find(c => c.id === currentId);
+                let msg = conv?.messages[parseInt(idx)];
+                if (msg?.role === 'user') {
+                    let orig = msg.content;
+                    let textarea = document.createElement('textarea'); textarea.value = orig; textarea.className = 'edit-textarea'; textarea.rows = 3;
+                    let actions = document.createElement('div'); actions.className = 'edit-actions';
+                    let save = document.createElement('button'); save.innerText = '✓ 保存并重答'; save.className = 'save-edit-btn';
+                    let cancel = document.createElement('button'); cancel.innerText = '✗ 取消'; cancel.className = 'cancel-edit-btn';
+                    actions.appendChild(save); actions.appendChild(cancel);
+                    bubble.innerHTML = ''; bubble.appendChild(textarea); bubble.appendChild(actions);
+                    save.onclick = async () => {
+                        let newText = textarea.value.trim();
+                        if (!newText) { alert('内容不能为空'); return; }
+                        let c = conversations.find(c2 => c2.id === currentId);
+                        if (c && c.messages[parseInt(idx)]) {
+                            c.messages[parseInt(idx)].content = newText;
+                            while (c.messages.length > parseInt(idx) + 1) c.messages.pop();
+                            saveData(); renderMessages();
+                            await generateForUserIndex(parseInt(idx));
+                        }
+                    };
+                    cancel.onclick = () => renderMessages();
+                }
+            }
+        }
+        // 重新生成按钮
+        if (e.target.classList?.contains('regenerate-btn')) {
+            if (isGenerating) { alert('请等待回复完成'); return; }
+            let bubble = e.target.closest('.bubble');
+            let idx = bubble?.getAttribute('data-idx');
+            if (idx !== undefined) {
+                let conv = conversations.find(c => c.id === currentId);
+                if (conv && conv.messages[parseInt(idx)]?.role === 'user') {
+                    while (conv.messages.length > parseInt(idx) + 1) conv.messages.pop();
+                    saveData(); renderMessages();
+                    await generateForUserIndex(parseInt(idx));
+                }
+            }
         }
     });
-    msgInput.addEventListener('input', autoResize);
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files[0]) onFileSelected(e.target.files[0]);
-    });
-    scrollTopBtn.addEventListener('click', scrollToTop);
-    scrollBottomBtn.addEventListener('click', scrollToBottom);
-    msgContainer.addEventListener('scroll', onUserScroll);
     
-    // ========== 启动 ==========
-    loadData();
-    renderSidebar();
-    renderMessages();
-    auto
+    // 静态按钮直接绑定
+    menuToggle.onclick = () => { if (sidebar.classList.contains('open')) closeSidebar(); else openSidebar(); };
+    overlay.onclick = closeSidebar;
+    newChatBtn.onclick = newConversation;
+    sendBtn.onclick = sendMessage;
+    msgInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+    msgInput.oninput = autoResize;
+    fileInput.onchange = (e) => { if (e.target.files[0]) onFileSelected(e.target.files[0]); };
+    scrollTopBtn.onclick = scrollToTop;
+    scrollBottomBtn.onclick = scrollToBottom;
+    msgContainer.onscroll = onUserScroll;
+    
+    loadData(); renderSidebar(); renderMessages(); autoResize();
+    if (!API_KEY) setTimeout(() => alert('⚠️ 未设置 API Key，请刷新页面输入'), 300);
+</script>
+</body>
+</html>
