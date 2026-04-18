@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek 最终稳定版</title>
+    <title>DeepSeek 调试版</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -150,6 +150,19 @@
             .overlay { display: none !important; }
             .menu-btn { display: none; }
         }
+        .error-toast {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            right: 20px;
+            background: #ff3b30;
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 100;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -177,7 +190,7 @@
         </div>
     </div>
     <div class="messages-container" id="messagesContainer">
-        <div class="message assistant"><div class="avatar">🤖</div><div class="bubble">✨ 功能：搜索对话、上传文件、编辑重答、历史记录</div></div>
+        <div class="message assistant"><div class="avatar">🤖</div><div class="bubble">✨ 调试版 - 点击发送会显示错误信息</div></div>
     </div>
     <div class="input-area">
         <div class="input-wrapper">
@@ -190,19 +203,30 @@
 </div>
 
 <script>
-// 把所有代码放在 window.onload 里，确保 DOM 完全加载后再执行
 window.onload = function() {
-    console.log('页面加载完成，开始初始化');
+    console.log('页面加载完成');
+    
+    // 显示错误提示的函数
+    function showError(msg) {
+        let toast = document.createElement('div');
+        toast.className = 'error-toast';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 4000);
+        console.error(msg);
+    }
     
     // ========== API Key ==========
     let API_KEY = localStorage.getItem('deepseek_api_key');
     if (!API_KEY) {
-        let key = prompt('🔑 输入 DeepSeek API Key');
+        let key = prompt('🔑 输入 DeepSeek API Key (从 platform.deepseek.com 获取)\n如果没有请先注册获取');
         if (key && key.trim()) {
             API_KEY = key.trim();
             localStorage.setItem('deepseek_api_key', API_KEY);
+            showError('✅ API Key 已保存');
         } else {
             API_KEY = '';
+            showError('❌ 未输入 API Key，无法发送消息');
         }
     }
     
@@ -213,11 +237,6 @@ window.onload = function() {
     let currentId = null;
     let isGenerating = false;
     let pendingFile = null;
-    let autoScroll = true;
-    let scrollTimer = null;
-    let searchMode = false;
-    let searchMatches = [];
-    let currentMatchIdx = -1;
     
     // ========== DOM 元素 ==========
     const sidebar = document.getElementById('sidebar');
@@ -278,12 +297,9 @@ window.onload = function() {
     }
     
     function scrollToTop() {
-        autoScroll = false;
         msgContainer.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => { autoScroll = true; }, 500);
     }
     
-    // ========== 侧边栏 ==========
     function renderSidebar() {
         historyList.innerHTML = '';
         for (let conv of conversations) {
@@ -299,35 +315,22 @@ window.onload = function() {
             const delBtn = div.querySelector('.delete-history');
             delBtn.onclick = function(e) {
                 e.stopPropagation();
-                if (conversations.length === 1) { alert('至少保留一个对话'); return; }
+                if (conversations.length === 1) { showError('至少保留一个对话'); return; }
                 conversations = conversations.filter(c => c.id !== conv.id);
                 if (currentId === conv.id) currentId = conversations[0].id;
                 saveData();
                 renderSidebar();
-                clearSearchAndRender();
+                renderMessages();
             };
             div.onclick = function() {
-                if (isGenerating) { alert('请等待回复完成'); return; }
+                if (isGenerating) { showError('请等待回复完成'); return; }
                 currentId = conv.id;
                 renderSidebar();
-                clearSearchAndRender();
+                renderMessages();
                 if (window.innerWidth < 768) closeSidebar();
             };
             historyList.appendChild(div);
         }
-    }
-    
-    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
-    function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
-    
-    // ========== 消息渲染 ==========
-    function clearSearchAndRender() {
-        searchMode = false;
-        searchMatches = [];
-        currentMatchIdx = -1;
-        if (searchInput) searchInput.value = '';
-        if (searchStats) searchStats.innerText = '0 个结果';
-        renderMessages();
     }
     
     function renderMessages() {
@@ -338,37 +341,12 @@ window.onload = function() {
             msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">发送消息开始对话</div></div>`;
             return;
         }
-        const msgMatches = new Map();
-        if (searchMode && searchMatches.length) {
-            for (let m of searchMatches) {
-                if (!msgMatches.has(m.msgIdx)) msgMatches.set(m.msgIdx, []);
-                msgMatches.get(m.msgIdx).push(m);
-            }
-        }
         for (let i = 0; i < conv.messages.length; i++) {
             const msg = conv.messages[i];
-            let formatted;
-            const matches = msgMatches.get(i) || [];
-            if (matches.length > 0) {
-                let result = '';
-                let last = 0;
-                matches.sort((a,b) => a.start - b.start);
-                for (let m of matches) {
-                    if (m.start > last) result += escapeHtml(msg.content.substring(last, m.start));
-                    const isCur = (currentMatchIdx === m.globalIdx);
-                    const cls = isCur ? 'highlight-current' : 'highlight';
-                    result += `<span class="${cls}">${escapeHtml(msg.content.substring(m.start, m.end))}</span>`;
-                    last = m.end;
-                }
-                if (last < msg.content.length) result += escapeHtml(msg.content.substring(last));
-                formatted = result.replace(/\n/g, '<br>');
-            } else {
-                formatted = formatLines(msg.content);
-            }
             const div = document.createElement('div');
             div.className = `message ${msg.role}`;
             const avatar = msg.role === 'user' ? '👤' : '🤖';
-            div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${formatted}</div>`;
+            div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${formatLines(msg.content)}</div>`;
             const bubble = div.querySelector('.bubble');
             if (msg.role === 'assistant' && msg.content) {
                 const copyBtn = document.createElement('button');
@@ -383,11 +361,11 @@ window.onload = function() {
                 const editBtn = document.createElement('button');
                 editBtn.innerText = '✏️ 编辑';
                 editBtn.className = 'edit-btn';
-                editBtn.onclick = function() { enableEditMode(bubble, msg.content, i); };
+                editBtn.onclick = function() { showError('编辑功能开发中'); };
                 const regenBtn = document.createElement('button');
                 regenBtn.innerText = '🔄 重新生成';
                 regenBtn.className = 'regenerate-btn';
-                regenBtn.onclick = function() { regenerateAnswer(i); };
+                regenBtn.onclick = function() { showError('重新生成功能开发中'); };
                 actionDiv.appendChild(editBtn);
                 actionDiv.appendChild(regenBtn);
                 bubble.appendChild(actionDiv);
@@ -397,141 +375,133 @@ window.onload = function() {
         scrollToBottom();
     }
     
-    // ========== 搜索 ==========
-    function performSearch() {
-        const keyword = searchInput.value.trim();
-        if (!keyword) {
-            searchMode = false;
-            searchMatches = [];
-            currentMatchIdx = -1;
-            searchStats.innerText = '0 个结果';
-            renderMessages();
+    async function copyToClip(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            showError('✅ 已复制');
+        } catch(e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showError('✅ 已复制');
+        }
+    }
+    
+    // ========== 发送消息 (核心功能，带详细错误) ==========
+    async function sendMessage() {
+        console.log('sendMessage 被调用');
+        
+        // 检查1: API Key
+        if (!API_KEY) {
+            showError('❌ 未设置 API Key，请刷新页面重新输入');
             return;
         }
-        let conv = conversations.find(c => c.id === currentId);
-        if (!conv) return;
-        const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        const matches = [];
-        let global = 0;
-        for (let i = 0; i < conv.messages.length; i++) {
-            const content = conv.messages[i].content;
-            let match;
-            while ((match = regex.exec(content)) !== null) {
-                matches.push({ msgIdx: i, start: match.index, end: match.index + match[0].length, globalIdx: global++ });
-            }
+        
+        // 检查2: 输入内容
+        let userText = msgInput.value.trim();
+        if (!userText && !pendingFile) {
+            showError('❌ 请输入消息内容');
+            return;
         }
-        searchMode = true;
-        searchMatches = matches;
-        currentMatchIdx = matches.length > 0 ? 0 : -1;
-        searchStats.innerText = `${matches.length} 个结果${matches.length > 0 ? ` (1/${matches.length})` : ''}`;
-        renderMessages();
-        if (matches.length > 0) {
-            const els = document.querySelectorAll('.message');
-            if (els[matches[0].msgIdx]) els[matches[0].msgIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        showError('⏳ 正在发送消息到 DeepSeek...');
+        
+        let displayText = userText;
+        let fileContent = '';
+        if (pendingFile) {
+            displayText = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
+            fileContent = `\n\n===== 文件 "${pendingFile.name}" 内容 =====\n${pendingFile.content}\n===== 结束 =====\n请根据文件内容回答。`;
+            pendingFile = null;
+            filePreviewArea.innerHTML = '';
+            fileInput.value = '';
         }
-    }
-    
-    function nextMatch() {
-        if (searchMatches.length === 0) return;
-        currentMatchIdx = (currentMatchIdx + 1) % searchMatches.length;
-        searchStats.innerText = `${searchMatches.length} 个结果 (${currentMatchIdx+1}/${searchMatches.length})`;
-        renderMessages();
-        const match = searchMatches[currentMatchIdx];
-        const els = document.querySelectorAll('.message');
-        if (els[match.msgIdx]) els[match.msgIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    function prevMatch() {
-        if (searchMatches.length === 0) return;
-        currentMatchIdx = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
-        searchStats.innerText = `${searchMatches.length} 个结果 (${currentMatchIdx+1}/${searchMatches.length})`;
-        renderMessages();
-        const match = searchMatches[currentMatchIdx];
-        const els = document.querySelectorAll('.message');
-        if (els[match.msgIdx]) els[match.msgIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    // ========== 编辑重答 ==========
-    function enableEditMode(bubbleEl, original, msgIdx) {
-        if (isGenerating) { alert('请等待回复完成'); return; }
-        const ta = document.createElement('textarea');
-        ta.value = original;
-        ta.className = 'edit-textarea';
-        ta.rows = 3;
-        const actions = document.createElement('div');
-        actions.className = 'edit-actions';
-        const saveBtn = document.createElement('button');
-        saveBtn.innerText = '✓ 保存并重答';
-        saveBtn.className = 'save-edit-btn';
-        const cancelBtn = document.createElement('button');
-        cancelBtn.innerText = '✗ 取消';
-        cancelBtn.className = 'cancel-edit-btn';
-        actions.appendChild(saveBtn);
-        actions.appendChild(cancelBtn);
-        bubbleEl.innerHTML = '';
-        bubbleEl.appendChild(ta);
-        bubbleEl.appendChild(actions);
-        saveBtn.onclick = async function() {
-            const newText = ta.value.trim();
-            if (!newText) { alert('内容不能为空'); return; }
-            let conv = conversations.find(c => c.id === currentId);
-            if (conv && conv.messages[msgIdx]?.role === 'user') {
-                conv.messages[msgIdx].content = newText;
-                while (conv.messages.length > msgIdx + 1) conv.messages.pop();
-                saveData();
-                clearSearchAndRender();
-                if (!isGenerating) await generateForUserIndex(msgIdx);
-            }
-        };
-        cancelBtn.onclick = function() { clearSearchAndRender(); };
-    }
-    
-    async function regenerateAnswer(msgIdx) {
-        if (isGenerating) { alert('请等待回复完成'); return; }
+        
+        // 获取当前对话
         let conv = conversations.find(c => c.id === currentId);
-        if (!conv || conv.messages[msgIdx]?.role !== 'user') return;
-        while (conv.messages.length > msgIdx + 1) conv.messages.pop();
+        if (!conv) {
+            showError('❌ 对话不存在');
+            return;
+        }
+        
+        // 添加用户消息
+        conv.messages.push({ role: 'user', content: displayText });
         saveData();
-        clearSearchAndRender();
-        await generateForUserIndex(msgIdx);
-    }
-    
-    // ========== API ==========
-    async function generateForUserIndex(userIdx) {
-        if (isGenerating) return;
-        let conv = conversations.find(c => c.id === currentId);
-        if (!conv || conv.messages[userIdx]?.role !== 'user') return;
+        renderMessages();
+        
+        msgInput.value = '';
+        msgInput.style.height = 'auto';
+        
+        // 添加占位 assistant 消息
         conv.messages.push({ role: 'assistant', content: '' });
         saveData();
         renderMessages();
+        
+        // 获取最后一条 assistant 气泡
         const bubbles = document.querySelectorAll('.message.assistant .bubble');
-        let target = bubbles[bubbles.length - 1];
-        if (!target) return;
-        let apiMsgs = [{ role: 'system', content: '你是DeepSeek助手，回答用换行分段。根据文件内容回答，不展示原文。' }];
-        for (let i = 0; i <= userIdx; i++) {
-            apiMsgs.push({ role: conv.messages[i].role, content: conv.messages[i].content });
+        let targetBubble = bubbles[bubbles.length - 1];
+        if (!targetBubble) {
+            showError('❌ 无法找到消息气泡');
+            return;
         }
+        
+        // 构建 API 请求
+        let apiMessages = [
+            { role: 'system', content: '你是DeepSeek助手，回答请使用换行分段，让阅读更舒适。' }
+        ];
+        for (let i = 0; i <= conv.messages.length - 2; i++) {
+            let msg = conv.messages[i];
+            let content = msg.content;
+            if (i === conv.messages.length - 2 && fileContent) {
+                content = displayText + fileContent;
+            }
+            apiMessages.push({ role: msg.role, content: content });
+        }
+        
         isGenerating = true;
         sendBtn.disabled = true;
+        targetBubble.innerHTML = '<span class="status-indicator"></span> 生成中...';
+        
         try {
-            let res = await fetch(DEEPSEEK_URL, {
+            showError('📡 正在调用 DeepSeek API...');
+            console.log('API 请求:', JSON.stringify({ model: 'deepseek-chat', messages: apiMessages.slice(0,2) }));
+            
+            let response = await fetch(DEEPSEEK_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-                body: JSON.stringify({ model: 'deepseek-chat', messages: apiMsgs, stream: true, temperature: 0.6, max_tokens: 2048 })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: apiMessages,
+                    stream: true,
+                    temperature: 0.7,
+                    max_tokens: 2048
+                })
             });
-            if (!res.ok) throw new Error(`API ${res.status}`);
-            const reader = res.body.getReader();
+            
+            if (!response.ok) {
+                let errorText = await response.text();
+                console.error('API 错误:', response.status, errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 200)}`);
+            }
+            
+            showError('✅ 连接成功，开始接收回复...');
+            
+            const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let full = '';
-            let buf = '';
-            let lastUpdate = 0;
-            target.innerHTML = '<span class="status-indicator"></span> 生成中...';
+            let fullAnswer = '';
+            let buffer = '';
+            
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                buf += decoder.decode(value, { stream: true });
-                const lines = buf.split('\n');
-                buf = lines.pop();
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
                 for (let line of lines) {
                     if (line.startsWith('data: ')) {
                         const data = line.slice(6);
@@ -540,99 +510,60 @@ window.onload = function() {
                             const json = JSON.parse(data);
                             const delta = json.choices[0]?.delta?.content || '';
                             if (delta) {
-                                full += delta;
-                                const now = Date.now();
-                                if (now - lastUpdate > 30) {
-                                    target.innerHTML = formatLines(full);
-                                    lastUpdate = now;
-                                }
-                                if (autoScroll) scrollToBottom();
+                                fullAnswer += delta;
+                                targetBubble.innerHTML = formatLines(fullAnswer);
+                                scrollToBottom();
                             }
                         } catch(e) {}
                     }
                 }
             }
-            target.innerHTML = formatLines(full || '(空回复)');
+            
+            targetBubble.innerHTML = formatLines(fullAnswer || '(空回复)');
             const copyBtn = document.createElement('button');
             copyBtn.innerText = '📋 复制';
             copyBtn.className = 'copy-btn';
-            copyBtn.onclick = function() { copyToClip(full); };
-            target.appendChild(copyBtn);
+            copyBtn.onclick = function() { copyToClip(fullAnswer); };
+            targetBubble.appendChild(copyBtn);
+            
+            // 保存回复
             let curr = conversations.find(c => c.id === currentId);
             if (curr && curr.messages[curr.messages.length-1]?.role === 'assistant') {
-                curr.messages[curr.messages.length-1].content = full;
+                curr.messages[curr.messages.length-1].content = fullAnswer;
                 saveData();
             }
+            
+            showError('✅ 回复完成！');
+            
+            // 更新对话标题
+            if (conv.messages.filter(m => m.role === 'user').length === 1) {
+                conv.title = displayText.slice(0, 26) || '新对话';
+                saveData();
+                renderSidebar();
+            }
+            
         } catch(err) {
-            target.innerHTML = formatLines(`❌ 请求失败: ${err.message}`);
+            console.error('发送失败:', err);
+            targetBubble.innerHTML = formatLines(`❌ 请求失败: ${err.message}`);
+            showError(`❌ 错误: ${err.message}`);
         } finally {
             isGenerating = false;
             sendBtn.disabled = false;
-            if (autoScroll) scrollToBottom();
         }
     }
     
-    async function copyToClip(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-            alert('✅ 已复制');
-        } catch(e) {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            alert('✅ 已复制');
-        }
-    }
-    
-    // ========== 发送消息 ==========
-    async function sendMessage() {
-        if (isGenerating) { alert('请等待回复完成'); return; }
-        let userText = msgInput.value.trim();
-        if (!userText && !pendingFile) return;
-        let displayText = userText;
-        let fileContent = '';
-        if (pendingFile) {
-            displayText = userText ? `${userText}\n📎 [文件: ${pendingFile.name}]` : `📎 [文件: ${pendingFile.name}]`;
-            fileContent = `\n\n===== 文件 "${pendingFile.name}" 完整内容 =====\n${pendingFile.content}\n===== 结束 =====\n请根据文件内容回答。`;
-            pendingFile = null;
-            filePreviewArea.innerHTML = '';
-            fileInput.value = '';
-        }
-        let conv = conversations.find(c => c.id === currentId);
-        let userIdx = conv.messages.length;
-        conv.messages.push({ role: 'user', content: displayText });
-        saveData();
-        renderMessages();
-        msgInput.value = '';
-        msgInput.style.height = 'auto';
-        let original = conv.messages[userIdx].content;
-        conv.messages[userIdx].content = displayText + fileContent;
-        await generateForUserIndex(userIdx);
-        conv.messages[userIdx].content = original;
-        saveData();
-        renderMessages();
-        if (conv.messages.filter(m => m.role === 'user').length === 1) {
-            conv.title = displayText.slice(0, 26) || '新对话';
-            saveData();
-            renderSidebar();
-        }
-    }
-    
-    // ========== 文件 ==========
     function onFileSelected(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             pendingFile = { name: file.name, content: e.target.result };
-            filePreviewArea.innerHTML = `<div class="file-preview-badge">📎 已附加: ${escapeHtml(file.name)} (完整) <button class="remove-file" id="clearFileBtn">✖</button></div>`;
+            filePreviewArea.innerHTML = `<div class="file-preview-badge">📎 已附加: ${escapeHtml(file.name)} <button class="remove-file" id="clearFileBtn">✖</button></div>`;
             const clearBtn = document.getElementById('clearFileBtn');
             if (clearBtn) {
                 clearBtn.onclick = function() { pendingFile = null; filePreviewArea.innerHTML = ''; fileInput.value = ''; };
             }
+            showError(`✅ 已加载文件: ${file.name} (${e.target.result.length} 字符)`);
         };
-        reader.onerror = function() { alert('读取失败'); };
+        reader.onerror = function() { showError('❌ 文件读取失败'); };
         reader.readAsText(file, 'UTF-8');
     }
     
@@ -642,24 +573,20 @@ window.onload = function() {
     }
     
     function newConversation() {
-        if (isGenerating) { alert('请等待回复完成'); return; }
+        if (isGenerating) { showError('请等待回复完成'); return; }
         conversations.unshift({ id: Date.now().toString(), title: '新对话', messages: [] });
         currentId = conversations[0].id;
         saveData();
         renderSidebar();
-        clearSearchAndRender();
+        renderMessages();
         if (window.innerWidth < 768) closeSidebar();
+        showError('✅ 已创建新对话');
     }
     
-    function onUserScroll() {
-        if (isGenerating) {
-            autoScroll = false;
-            if (scrollTimer) clearTimeout(scrollTimer);
-            scrollTimer = setTimeout(function() { autoScroll = true; }, 3000);
-        }
-    }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+    function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
     
-    // ========== 绑定事件 (全部用 onclick) ==========
+    // ========== 绑定事件 ==========
     menuToggle.onclick = function() { sidebar.classList.contains('open') ? closeSidebar() : openSidebar(); };
     overlay.onclick = closeSidebar;
     newChatBtn.onclick = newConversation;
@@ -667,7 +594,25 @@ window.onload = function() {
     scrollTopBtn.onclick = scrollToTop;
     scrollBottomBtn.onclick = scrollToBottom;
     searchBtn.onclick = function() { searchPanel.classList.toggle('show'); };
-    searchInput.oninput = performSearch;
-    prevMatchBtn.onclick = prevMatch;
-    nextMatchBtn.onclick = nextMatch;
-    fileInput.onchange = function(e) { if (e.target.files[0]) onFileSel
+    searchInput.oninput = function() { showError('搜索功能开发中'); };
+    prevMatchBtn.onclick = function() { showError('搜索功能开发中'); };
+    nextMatchBtn.onclick = function() { showError('搜索功能开发中'); };
+    fileInput.onchange = function(e) { if (e.target.files[0]) onFileSelected(e.target.files[0]); };
+    msgInput.onkeydown = function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+    msgInput.oninput = autoResize;
+    
+    // ========== 启动 ==========
+    loadData();
+    renderSidebar();
+    renderMessages();
+    autoResize();
+    
+    if (API_KEY) {
+        showError('✅ 初始化完成，API Key 已设置');
+    } else {
+        showError('⚠️ 请刷新页面并输入 API Key');
+    }
+};
+</script>
+</body>
+</html>
