@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>DeepSeek 流畅编辑版 · 零速度损耗</title>
+    <title>DeepSeek 编辑重答版 · 流畅稳定</title>
     <style>
         * {
             margin: 0;
@@ -413,7 +413,7 @@
     <div class="messages-container" id="messagesContainer">
         <div class="message assistant">
             <div class="avatar">🤖</div>
-            <div class="bubble">✨ 编辑后直接替换原回复（不保留历史版本，速度零损耗）<br>• 点击用户消息旁的 ✏️ 编辑，保存后自动重新生成<br>• 生成时仍可自由滑动页面</div>
+            <div class="bubble">✨ 新增「编辑重答」功能<br>• 每条用户消息旁有 ✏️ 编辑按钮，修改后可重新生成回复<br>• 生成时仍可自由滑动页面<br>• 支持文件上传，回复自动分段</div>
         </div>
     </div>
 
@@ -452,6 +452,7 @@
     let pendingFile = null;
     let autoScrollEnabled = true;
     let scrollTimeout = null;
+    let currentStreamController = null;
     
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -548,7 +549,7 @@
         if (!conv) return;
         msgContainer.innerHTML = '';
         if (conv.messages.length === 0) {
-            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 点击用户消息旁的 ✏️ 可编辑并重新生成回复（旧回复将被替换）</div></div>`;
+            msgContainer.innerHTML = `<div class="message assistant"><div class="avatar">🤖</div><div class="bubble">📄 点击用户消息旁的 ✏️ 可编辑并重新生成回复。</div></div>`;
         } else {
             for (let i = 0; i < conv.messages.length; i++) {
                 const msg = conv.messages[i];
@@ -618,9 +619,7 @@
             if (!newText) { alert('内容不能为空'); return; }
             let conv = conversations.find(c => c.id === currentId);
             if (conv && conv.messages[messageIndex] && conv.messages[messageIndex].role === 'user') {
-                // 更新用户消息内容
                 conv.messages[messageIndex].content = newText;
-                // 删除该用户消息之后的所有消息（即旧的 assistant 回复）
                 while (conv.messages.length > messageIndex + 1) {
                     conv.messages.pop();
                 }
@@ -638,7 +637,6 @@
         if (isGenerating) { alert('请等待回复完成'); return; }
         let conv = conversations.find(c => c.id === currentId);
         if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
-        // 删除该用户消息之后的所有消息
         while (conv.messages.length > userMsgIndex + 1) {
             conv.messages.pop();
         }
@@ -652,7 +650,6 @@
         let conv = conversations.find(c => c.id === currentId);
         if (!conv || conv.messages[userMsgIndex]?.role !== 'user') return;
         
-        // 添加占位 assistant 消息
         conv.messages.push({ role: 'assistant', content: '' });
         saveData();
         renderMessages();
@@ -661,7 +658,6 @@
         let targetBubble = assistantBubbles[assistantBubbles.length - 1];
         if (!targetBubble) return;
         
-        // 构建 API 消息（包含该用户消息之前的所有上下文）
         let apiMessages = [];
         apiMessages.push({ role: 'system', content: '你是DeepSeek助手，回答时请使用换行分段让阅读更舒适。如果用户上传了文件，根据文件内容回答，不要展示文件原文。直接给出清晰、分段的结果。' });
         for (let i = 0; i <= userMsgIndex; i++) {
@@ -786,16 +782,14 @@
         msgInput.value = '';
         msgInput.style.height = 'auto';
         
-        // 临时替换为包含文件内容的版本用于API调用
+        // 临时替换API用的内容
         let originalContent = conv.messages[userMsgIndex].content;
         conv.messages[userMsgIndex].content = finalContentForApi;
         await generateForUserIndex(userMsgIndex);
-        // 恢复为显示版本（不包含文件原文）
         conv.messages[userMsgIndex].content = originalContent;
         saveData();
         renderMessages();
         
-        // 更新会话标题
         if (conv.messages.filter(m => m.role === 'user').length === 1) {
             conv.title = finalDisplayText.slice(0, 26) || '新对话';
             saveData();
@@ -874,4 +868,7 @@
     renderSidebar();
     renderMessages();
     autoResize();
-    if
+    if (!API_KEY) setTimeout(() => alert('⚠️ 未设置 API Key，请刷新页面输入'), 300);
+</script>
+</body>
+</html>
